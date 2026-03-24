@@ -8,8 +8,31 @@
 import Config
 
 config :gingko,
-  ecto_repos: [Gingko.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  ecto_repos: [Gingko.Repo]
+
+config :anubis_mcp, :session_store, enabled: false
+
+# Runtime settings should provide end-user memory configuration.
+# These values are compile/runtime-safe fallbacks until runtime.exs loads.
+config :gingko, Gingko.Memory,
+  storage_root: Path.expand("~/.gingko/memory"),
+  mnemosyne_config: %{
+    llm: %{model: "openai:gpt-4o-mini", opts: %{}},
+    embedding: %{model: "openai:text-embedding-3-small", opts: %{}}
+  },
+  llm_adapter: Mnemosyne.Adapters.SycophantLLM,
+  embedding_adapter: Mnemosyne.Adapters.SycophantEmbedding
+
+config :gingko, Gingko.Repo,
+  journal_mode: :wal,
+  pool_size: 5
+
+config :gingko, Oban,
+  engine: Oban.Engines.Lite,
+  repo: Gingko.Repo,
+  queues: [summaries: 2],
+  notifier: Oban.Notifiers.PG
 
 # Configure the endpoint
 config :gingko, GingkoWeb.Endpoint,
@@ -21,15 +44,6 @@ config :gingko, GingkoWeb.Endpoint,
   ],
   pubsub_server: Gingko.PubSub,
   live_view: [signing_salt: "Wp1eBjaA"]
-
-# Configure the mailer
-#
-# By default it uses the "Local" adapter which stores the emails
-# locally. You can see the emails in your browser, at "/dev/mailbox".
-#
-# For production it's recommended to configure a different adapter
-# at the `config/runtime.exs`.
-config :gingko, Gingko.Mailer, adapter: Swoosh.Adapters.Local
 
 # Configure esbuild (the version is required)
 config :esbuild,
@@ -53,6 +67,8 @@ config :tailwind,
   ]
 
 # Configure Elixir's Logger
+config :logger, level: :info
+
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]

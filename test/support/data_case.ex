@@ -1,52 +1,45 @@
 defmodule Gingko.DataCase do
   @moduledoc """
-  This module defines the setup for tests requiring
-  access to the application's data layer.
+  Test case template for tests that touch `Gingko.Repo`.
 
-  You may define functions here to be used as helpers in
-  your tests.
-
-  Finally, if the test case interacts with the database,
-  we enable the SQL sandbox, so changes done to the database
-  are reverted at the end of every test. If you are using
-  PostgreSQL, you can even run database tests asynchronously
-  by setting `use Gingko.DataCase, async: true`, although
-  this option is not recommended for other databases.
+  SQLite is configured with a single pool connection and no concurrent sandbox
+  mode, so tests that use this case should run sequentially within their own
+  module. Tables are truncated on setup so individual tests stay isolated.
   """
 
   use ExUnit.CaseTemplate
 
+  alias Gingko.Repo
+
   using do
     quote do
-      alias Gingko.Repo
-
       import Ecto
       import Ecto.Changeset
       import Ecto.Query
       import Gingko.DataCase
+
+      alias Gingko.Repo
     end
   end
 
-  setup tags do
-    Gingko.DataCase.setup_sandbox(tags)
+  setup _tags do
+    clean_summaries_tables()
     :ok
   end
 
   @doc """
-  Sets up the sandbox based on the test tags.
+  Clears the summaries tables so tests start from a known state.
   """
-  def setup_sandbox(tags) do
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Gingko.Repo, shared: not tags[:async])
-    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+  def clean_summaries_tables do
+    for table <- ~w(cluster_membership_deltas cluster_summaries principal_memory_sections) do
+      Repo.query!("DELETE FROM #{table}")
+    end
+
+    :ok
   end
 
   @doc """
-  A helper that transforms changeset errors into a map of messages.
-
-      assert {:error, changeset} = Accounts.create_user(%{password: "short"})
-      assert "password is too short" in errors_on(changeset).password
-      assert %{password: ["password is too short"]} = errors_on(changeset)
-
+  Reduces a changeset's error list to a readable map.
   """
   def errors_on(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->

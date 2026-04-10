@@ -1,0 +1,517 @@
+defmodule GingkoWeb.SetupLiveTest do
+  use GingkoWeb.ConnCase, async: false
+
+  alias Gingko.Settings
+
+  setup do
+    previous = Application.get_env(:gingko, :settings_opts, [])
+    previous_settings = Application.get_env(:gingko, :settings)
+    previous_memory = Application.get_env(:gingko, Gingko.Memory)
+
+    on_exit(fn ->
+      Application.put_env(:gingko, :settings_opts, previous)
+
+      if previous_settings == nil do
+        Application.delete_env(:gingko, :settings)
+      else
+        Application.put_env(:gingko, :settings, previous_settings)
+      end
+
+      if previous_memory == nil do
+        Application.delete_env(:gingko, Gingko.Memory)
+      else
+        Application.put_env(:gingko, Gingko.Memory, previous_memory)
+      end
+    end)
+
+    :ok
+  end
+
+  @tag :tmp_dir
+  test "renders current settings and model fields", %{conn: conn, tmp_dir: tmp_dir} do
+    Application.put_env(
+      :gingko,
+      :settings_opts,
+      home: tmp_dir,
+      llm_resolver: fn
+        "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end,
+      embedding_resolver: fn
+        "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end
+    )
+
+    {:ok, _view, html} = live conn, ~p"/setup"
+
+    assert html =~ "Workspace"
+    assert html =~ "Setup"
+    assert html =~ "Projects"
+    assert html =~ "System Theme"
+    assert html =~ "Setup Required"
+    assert html =~ "text-embedding-3-small"
+    assert html =~ "Memory Engine"
+  end
+
+  @tag :tmp_dir
+  test "saving mixed-provider settings persists them and updates the UI", %{
+    conn: conn,
+    tmp_dir: tmp_dir
+  } do
+    Application.put_env(
+      :gingko,
+      :settings_opts,
+      home: tmp_dir,
+      llm_resolver: fn
+        "anthropic:claude-sonnet-4" -> {:ok, %{provider: :anthropic}}
+        _ -> {:error, :unknown_model}
+      end,
+      embedding_resolver: fn
+        "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end
+    )
+
+    {:ok, view, _html} = live conn, ~p"/setup"
+
+    params = %{
+      "settings" => %{
+        "paths" => %{"memory" => "custom-memory"},
+        "llm" => %{"provider" => "anthropic", "model" => "claude-sonnet-4"},
+        "embeddings" => %{"provider" => "openai", "model" => "text-embedding-3-small"},
+        "server" => %{"host" => "0.0.0.0", "port" => "4010"},
+        "mnemosyne" => %{
+          "intent_merge_threshold" => "0.8",
+          "intent_identity_threshold" => "0.95",
+          "refinement_threshold" => "0.6",
+          "auto_commit" => "true",
+          "flush_timeout_ms" => "120000",
+          "session_timeout_ms" => "600000",
+          "trace_verbosity" => "summary"
+        }
+      }
+    }
+
+    view
+    |> form("#settings-form", params)
+    |> render_submit()
+
+    assert_redirect view, ~p"/projects"
+
+    settings = Settings.load(home: tmp_dir)
+
+    assert settings.paths.memory == "custom-memory"
+    assert settings.llm.provider == "anthropic"
+    assert settings.server.port == 4010
+  end
+
+  @tag :tmp_dir
+  test "changing embeddings provider to bumblebee updates the form immediately", %{
+    conn: conn,
+    tmp_dir: tmp_dir
+  } do
+    Application.put_env(
+      :gingko,
+      :settings_opts,
+      home: tmp_dir,
+      llm_resolver: fn
+        "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end,
+      embedding_resolver: fn
+        "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end
+    )
+
+    {:ok, view, _html} = live conn, ~p"/setup"
+
+    html =
+      view
+      |> form("#settings-form", %{
+        "settings" => %{
+          "paths" => %{"memory" => "memory"},
+          "llm" => %{"provider" => "openai", "model" => "gpt-4o-mini"},
+          "embeddings" => %{"provider" => "bumblebee", "model" => "intfloat/e5-base-v2"},
+          "server" => %{"host" => "127.0.0.1", "port" => "4000"},
+          "mnemosyne" => %{
+            "intent_merge_threshold" => "0.8",
+            "intent_identity_threshold" => "0.95",
+            "refinement_threshold" => "0.6",
+            "auto_commit" => "true",
+            "flush_timeout_ms" => "120000",
+            "session_timeout_ms" => "600000",
+            "trace_verbosity" => "summary"
+          }
+        }
+      })
+      |> render_change()
+
+    assert html =~ "embedding model automatically"
+  end
+
+  @tag :tmp_dir
+  test "mnemosyne config section renders with default values", %{conn: conn, tmp_dir: tmp_dir} do
+    Application.put_env(
+      :gingko,
+      :settings_opts,
+      home: tmp_dir,
+      llm_resolver: fn
+        "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end,
+      embedding_resolver: fn
+        "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end
+    )
+
+    {:ok, _view, html} = live conn, ~p"/setup"
+
+    assert html =~ "Memory Engine"
+    assert html =~ "Intent merge threshold"
+    assert html =~ "Refinement threshold"
+    assert html =~ "Refinement budget"
+    assert html =~ "Plateau delta"
+    assert html =~ "Extraction profile"
+    assert html =~ "Consolidation threshold"
+    assert html =~ "Decay threshold"
+    assert html =~ "Flush timeout"
+    assert html =~ "Session timeout"
+    assert html =~ "Trace verbosity"
+  end
+
+  @tag :tmp_dir
+  test "setup screen renders tabs and switches active panel on click", %{
+    conn: conn,
+    tmp_dir: tmp_dir
+  } do
+    Application.put_env(
+      :gingko,
+      :settings_opts,
+      home: tmp_dir,
+      llm_resolver: fn
+        "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end,
+      embedding_resolver: fn
+        "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end
+    )
+
+    {:ok, view, html} = live conn, ~p"/setup"
+
+    for tab_label <- [
+          "General",
+          "Models",
+          "Memory Engine",
+          "Retrieval Validation",
+          "Summaries"
+        ] do
+      assert html =~ tab_label
+    end
+
+    assert html =~ "Episodic Validation"
+
+    next_html =
+      view
+      |> element("button[phx-value-tab=\"validation\"]")
+      |> render_click()
+
+    assert next_html =~ "tab-active"
+    assert next_html =~ "Episodic Validation"
+  end
+
+  @tag :tmp_dir
+  test "renders Retrieval Validation inputs with defaults", %{conn: conn, tmp_dir: tmp_dir} do
+    Application.put_env(
+      :gingko,
+      :settings_opts,
+      home: tmp_dir,
+      llm_resolver: fn
+        "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end,
+      embedding_resolver: fn
+        "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+        _ -> {:error, :unknown_model}
+      end
+    )
+
+    {:ok, _view, html} = live conn, ~p"/setup"
+
+    assert html =~ "Validation threshold"
+    assert html =~ "Orphan penalty"
+    assert html =~ "Weak grounding penalty"
+  end
+
+  describe "[summaries] section" do
+    @tag :tmp_dir
+    test "renders the Memory Summaries section with six fields and defaults", %{
+      conn: conn,
+      tmp_dir: tmp_dir
+    } do
+      Application.put_env(
+        :gingko,
+        :settings_opts,
+        home: tmp_dir,
+        llm_resolver: fn
+          "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        embedding_resolver: fn
+          "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end
+      )
+
+      {:ok, _view, html} = live conn, ~p"/setup"
+
+      assert html =~ "Memory Summaries"
+      assert html =~ "Enabled"
+      assert html =~ "Hot tags"
+      assert html =~ "Cluster regen memory threshold"
+      assert html =~ "Cluster regen idle seconds"
+      assert html =~ "Principal regen debounce seconds"
+      assert html =~ "Session primer recent count"
+    end
+
+    @tag :tmp_dir
+    test "saving the six summaries fields round-trips through config.toml and Settings.load/1",
+         %{conn: conn, tmp_dir: tmp_dir} do
+      Application.put_env(
+        :gingko,
+        :settings_opts,
+        home: tmp_dir,
+        llm_resolver: fn
+          "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        embedding_resolver: fn
+          "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end
+      )
+
+      {:ok, view, _html} = live conn, ~p"/setup"
+
+      params = %{
+        "settings" => %{
+          "paths" => %{"memory" => "memory"},
+          "llm" => %{"provider" => "openai", "model" => "gpt-4o-mini"},
+          "embeddings" => %{
+            "provider" => "openai",
+            "model" => "text-embedding-3-small"
+          },
+          "server" => %{"host" => "127.0.0.1", "port" => "4000"},
+          "mnemosyne" => %{
+            "intent_merge_threshold" => "0.8",
+            "intent_identity_threshold" => "0.95",
+            "refinement_threshold" => "0.6",
+            "auto_commit" => "true",
+            "flush_timeout_ms" => "120000",
+            "session_timeout_ms" => "600000",
+            "trace_verbosity" => "summary"
+          },
+          "summaries" => %{
+            "enabled" => "true",
+            "hot_tags_k" => "25",
+            "cluster_regen_memory_threshold" => "7",
+            "cluster_regen_idle_seconds" => "900",
+            "principal_regen_debounce_seconds" => "45",
+            "session_primer_recent_count" => "11"
+          }
+        }
+      }
+
+      view
+      |> form("#settings-form", params)
+      |> render_submit()
+
+      assert_redirect view, ~p"/projects"
+
+      settings = Settings.load(home: tmp_dir)
+
+      assert settings.summaries.enabled == true
+      assert settings.summaries.hot_tags_k == 25
+      assert settings.summaries.cluster_regen_memory_threshold == 7
+      assert settings.summaries.cluster_regen_idle_seconds == 900
+      assert settings.summaries.principal_regen_debounce_seconds == 45
+      assert settings.summaries.session_primer_recent_count == 11
+    end
+  end
+
+  describe "pipeline overrides and value_function tabs" do
+    @tag :tmp_dir
+    test "renders both new tab labels and their default content", %{conn: conn, tmp_dir: tmp_dir} do
+      Application.put_env(
+        :gingko,
+        :settings_opts,
+        home: tmp_dir,
+        llm_resolver: fn
+          "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        embedding_resolver: fn
+          "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end
+      )
+
+      {:ok, _view, html} = live conn, ~p"/setup"
+
+      assert html =~ "Pipeline Overrides"
+      assert html =~ "Value Function"
+      assert html =~ "Per-step LLM overrides"
+      assert html =~ "Value function parameters"
+
+      for step <- ["structuring", "retrieval", "summarize"], do: assert(html =~ step)
+      for type <- ["semantic", "procedural", "episodic", "subgoal"], do: assert(html =~ type)
+    end
+
+    @tag :tmp_dir
+    test "saving the overrides tab round-trips a per-step model through config.toml", %{
+      conn: conn,
+      tmp_dir: tmp_dir
+    } do
+      Application.put_env(
+        :gingko,
+        :settings_opts,
+        home: tmp_dir,
+        llm_resolver: fn
+          "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        embedding_resolver: fn
+          "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end
+      )
+
+      {:ok, view, _html} = live conn, ~p"/setup"
+
+      empty_override = %{"model" => "", "temperature" => "", "max_tokens" => ""}
+
+      overrides_payload =
+        Map.new(Settings.pipeline_steps(), fn step -> {step, empty_override} end)
+        |> Map.put("structuring", %{
+          "model" => "gpt-4o-mini",
+          "temperature" => "0.1",
+          "max_tokens" => ""
+        })
+
+      vf_payload =
+        Map.new(Settings.node_types(), fn type ->
+          defaults = Settings.value_function_defaults()[type]
+
+          {type,
+           Map.new(Settings.value_function_param_keys(), fn key ->
+             {key, to_string(Map.fetch!(defaults, key))}
+           end)}
+        end)
+
+      params = %{
+        "settings" => %{
+          "paths" => %{"memory" => "memory"},
+          "llm" => %{"provider" => "openai", "model" => "gpt-4o-mini"},
+          "embeddings" => %{"provider" => "openai", "model" => "text-embedding-3-small"},
+          "server" => %{"host" => "127.0.0.1", "port" => "4000"},
+          "mnemosyne" => %{
+            "intent_merge_threshold" => "0.8",
+            "intent_identity_threshold" => "0.95",
+            "refinement_threshold" => "0.6",
+            "auto_commit" => "true",
+            "flush_timeout_ms" => "120000",
+            "session_timeout_ms" => "600000",
+            "trace_verbosity" => "summary"
+          },
+          "overrides" => overrides_payload,
+          "value_function" => vf_payload
+        }
+      }
+
+      view
+      |> form("#settings-form", params)
+      |> render_submit()
+
+      assert_redirect view, ~p"/projects"
+
+      settings = Settings.load(home: tmp_dir)
+
+      assert settings.overrides["structuring"].model == "gpt-4o-mini"
+      assert settings.overrides["structuring"].temperature == 0.1
+      assert settings.overrides["retrieval"] == %{model: nil, temperature: nil, max_tokens: nil}
+      assert settings.value_function["semantic"]["top_k"] == 20
+    end
+
+    @tag :tmp_dir
+    test "saving edited value_function params persists them", %{conn: conn, tmp_dir: tmp_dir} do
+      Application.put_env(
+        :gingko,
+        :settings_opts,
+        home: tmp_dir,
+        llm_resolver: fn
+          "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        embedding_resolver: fn
+          "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end
+      )
+
+      {:ok, view, _html} = live conn, ~p"/setup"
+
+      empty_override = %{"model" => "", "temperature" => "", "max_tokens" => ""}
+
+      overrides_payload =
+        Map.new(Settings.pipeline_steps(), fn step -> {step, empty_override} end)
+
+      vf_payload =
+        Map.new(Settings.node_types(), fn type ->
+          defaults = Settings.value_function_defaults()[type]
+
+          params =
+            Map.new(Settings.value_function_param_keys(), fn key ->
+              {key, to_string(Map.fetch!(defaults, key))}
+            end)
+
+          {type, params}
+        end)
+        |> put_in(["semantic", "threshold"], "0.55")
+        |> put_in(["semantic", "top_k"], "42")
+
+      params = %{
+        "settings" => %{
+          "paths" => %{"memory" => "memory"},
+          "llm" => %{"provider" => "openai", "model" => "gpt-4o-mini"},
+          "embeddings" => %{"provider" => "openai", "model" => "text-embedding-3-small"},
+          "server" => %{"host" => "127.0.0.1", "port" => "4000"},
+          "mnemosyne" => %{
+            "intent_merge_threshold" => "0.8",
+            "intent_identity_threshold" => "0.95",
+            "refinement_threshold" => "0.6",
+            "auto_commit" => "true",
+            "flush_timeout_ms" => "120000",
+            "session_timeout_ms" => "600000",
+            "trace_verbosity" => "summary"
+          },
+          "overrides" => overrides_payload,
+          "value_function" => vf_payload
+        }
+      }
+
+      view
+      |> form("#settings-form", params)
+      |> render_submit()
+
+      settings = Settings.load(home: tmp_dir)
+
+      assert settings.value_function["semantic"]["threshold"] == 0.55
+      assert settings.value_function["semantic"]["top_k"] == 42
+      assert settings.value_function["procedural"]["threshold"] == 0.8
+    end
+  end
+end

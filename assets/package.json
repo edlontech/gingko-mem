@@ -1,0 +1,8 @@
+{
+  "name": "gingko-assets",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "dependencies": {
+    "cytoscape": "^3.33.1"
+  }
+}

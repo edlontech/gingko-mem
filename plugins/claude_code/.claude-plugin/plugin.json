@@ -1,0 +1,5 @@
+{
+  "name": "gingko-memory",
+  "version": "0.1.0",
+  "description": "Graph-based memory integration for Claude Code via Gingko REST API"
+}

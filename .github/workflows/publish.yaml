@@ -68,11 +68,33 @@ jobs:
         run: just build-target ${{ matrix.target }}
 
       - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          token: ${{ steps.app-token.outputs.token }}
+          files: burrito_out/*
+
+  checksums:
+    needs: [release-please, build-release]
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_KEY }}
+
+      - uses: MCJack123/ghaction-generate-release-hashes@v3
+        with:
+          hash-type: sha256
+          file-name: SHA256SUMS
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          TAG: ${{ needs.release-please.outputs.tag_name }}
-        run: |
-          cd burrito_out
-          for f in *; do
-            gh release upload "$TAG" "$f" --clobber
-          done
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Upload SHA256SUMS
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          token: ${{ steps.app-token.outputs.token }}
+          files: SHA256SUMS

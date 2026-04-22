@@ -30,6 +30,12 @@ defmodule GingkoWeb.Router do
     forward "/mcp", Anubis.Server.Transport.StreamableHTTP.Plug, server: Gingko.MCP.Server
   end
 
+  scope "/", GingkoWeb.Api do
+    pipe_through :api
+
+    get "/health", HealthController, :show
+  end
+
   scope "/api", GingkoWeb.Api do
     pipe_through :api
 

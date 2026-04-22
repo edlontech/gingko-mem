@@ -85,6 +85,7 @@ defmodule Gingko.MixProject do
       {:mnemosyne, github: "edlontech/mnemosyne", branch: "main"},
       {:nx, "~> 0.10", override: true},
       {:oban, "~> 2.18"},
+      {:owl, "~> 0.12"},
       {:oban_web, "~> 2.11"},
       {:phoenix, "~> 1.8.3"},
       {:phoenix_html, "~> 4.1"},
@@ -129,6 +130,7 @@ defmodule Gingko.MixProject do
       ],
       "assets.build": ["compile", "tailwind gingko", "esbuild gingko"],
       "assets.deploy": [
+        "compile",
         "tailwind gingko --minify",
         "esbuild gingko --minify",
         "phx.digest"

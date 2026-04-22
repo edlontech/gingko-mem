@@ -22,3 +22,5 @@ build-linux-arm: (build-target "linux_arm")
 clean:
     rm -rf burrito_out/
     rm -rf _build/prod/
+    rm -rf "${HOME}/Library/Application Support/.burrito"
+    rm -rf "${XDG_DATA_HOME:-${HOME}/.local/share}/.burrito"

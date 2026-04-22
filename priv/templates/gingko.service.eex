@@ -1,0 +1,15 @@
+[Unit]
+Description=Gingko memory engine
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=<%= binary_path %> start
+Restart=on-failure
+RestartSec=5
+Environment=GINGKO_HOME=<%= gingko_home %>
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

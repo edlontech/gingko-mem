@@ -5,12 +5,20 @@ defmodule Gingko.Application do
 
   use Application
 
+  alias Gingko.CLI.Cookie
+  alias Gingko.CLI.Dispatcher
+  alias Gingko.CLI.Paths
   alias Gingko.Embeddings.BumblebeeServing
   alias Gingko.Settings
   alias Mnemosyne.Supervisor, as: MnemosyneSupervisor
 
   @impl true
   def start(_type, _args) do
+    if burrito?() do
+      :boot = Dispatcher.maybe_dispatch(:init.get_plain_arguments())
+    end
+
+    start_distribution()
     Gingko.NxBackend.configure()
     setup_file_logger()
     migrate_metadata!()
@@ -164,6 +172,20 @@ defmodule Gingko.Application do
       _ -> nil
     end
   end
+
+  defp start_distribution do
+    if burrito?() do
+      cookie = Cookie.read_or_generate!()
+
+      case Node.start(Paths.node_name(), name_domain: :longnames) do
+        {:ok, _} -> :erlang.set_cookie(Node.self(), cookie)
+        {:error, {:already_started, _}} -> :erlang.set_cookie(Node.self(), cookie)
+        {:error, _} -> :ok
+      end
+    end
+  end
+
+  defp burrito?, do: System.get_env("__BURRITO") == "1"
 
   defp setup_file_logger do
     case Application.get_env(:gingko, :log_file) do

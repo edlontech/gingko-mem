@@ -1,129 +1,99 @@
 # Gingko
 
-Gingko is a Phoenix application that exposes project-scoped memory over MCP.
-It uses `mnemosyne` as the memory engine and keeps the public contract narrow:
-agents open a project repo, write sessions into it, and can now recall and
-inspect memory through MCP tools.
+Gingko is a application that exposes a project-scoped memory graph
+over [MCP](https://modelcontextprotocol.io). Any agent that speaks MCP can
+open a project, record observations, recall past memories, and navigate the
+knowledge graph that builds up across sessions.
 
-## Runtime Configuration
+Under the hood it uses [Mnemosyne](https://github.com/edlontech/mnemosyne) as a memory engine
 
-Gingko now uses an application home instead of expecting end users to edit
-Elixir config files.
-
-- Default app home: `~/.gingko`
-- Override app home: `GINGKO_HOME=/custom/path`
-- Non-secret settings: `GINGKO_HOME/config.toml`
-- Memory storage: `GINGKO_HOME/memory/`
-- Secrets: environment variables only
-
-On first boot, Gingko creates the app home, a default `config.toml`, and the
-memory directory automatically.
-
-### Setup Flow
-
-If Gingko is missing required configuration, visiting `/` redirects to
-`/setup`.
-
-The setup page lets you edit:
-
-- memory path
-- LLM provider, model, and API key env-var name
-- embedding provider and model
-- embedding API key env-var name for remote providers
-- server host and port
-
-Gingko stores only env-var names in `config.toml`. It does not write API keys
-to disk. If you choose the local `bumblebee` embedding provider, Gingko starts
-the embedding model itself and defaults to `intfloat/e5-base-v2`.
-
-### Example `config.toml`
-
-```toml
-[paths]
-memory = "memory"
-
-[llm]
-provider = "anthropic"
-model = "claude-sonnet-4"
-api_key_env = "ANTHROPIC_API_KEY"
-
-[embeddings]
-provider = "bumblebee"
-model = "intfloat/e5-base-v2"
-api_key_env = ""
-
-[server]
-host = "127.0.0.1"
-port = 4000
-```
-
-## Current MCP Tool Surface
-
-Write tools:
-
-- `open_project_memory`
-- `start_session`
-- `append_step`
-- `close_and_commit`
-
-Read tools:
-
-- `recall`
-- `get_node`
-- `get_session_state`
-- `list_projects`
-
-## Workflow
-
-The write path is explicit:
-
-1. Call `open_project_memory` with a `project_id`
-2. Call `start_session`
-3. Call `append_step` one or more times
-4. Call `close_and_commit`
-
-Once a project has memory, clients can use:
-
-- `recall` to retrieve project memory for a query
-- `get_node` to inspect a specific node plus metadata and linked nodes
-- `get_session_state` to inspect a session lifecycle state
-- `list_projects` to see currently open Gingko-managed repos
-
-## Local Development
-
-Install dependencies and assets:
-
-- Frontend package manager requirement: Yarn 1.x, or Node with Corepack enabled.
-- `mix setup` auto-detects in this order: `yarn`, then `corepack yarn`.
-- If neither is available, `mix setup` exits with a clear message.
+## Quick start
 
 ```bash
-mix setup
-```
-
-Start the server:
-
-```bash
+mix setup         # fetch deps, install assets
 mix phx.server
 ```
 
-The Phoenix endpoint runs on [http://localhost:4000](http://localhost:4000) and
-the MCP endpoint is available at [http://localhost:4000/mcp](http://localhost:4000/mcp).
+Then point an MCP client at `http://localhost:4000/mcp`. The first time the
+server boots it creates `~/.gingko/` with a default config and guides you
+through setup at `http://localhost:4000/setup` if anything is missing.
 
-If `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or any custom env var referenced in
-`config.toml` is missing, Gingko still boots and guides you through setup in
-the browser.
+## Documentation
+
+Long-form guides live in [`guides/`](guides/README.md):
+
+- [Getting Started](guides/getting-started.md)
+- [Memory Model](guides/memory-model.md) — projects, sessions, steps, node types
+- [MCP Tools Reference](guides/mcp-tools.md)
+- [Configuration](guides/configuration.md) — every knob in `config.toml`
+- [Extraction Profiles](guides/extraction-profiles.md) — per-domain and per-project overlays
+- [Summaries & Session Primer](guides/summaries-and-primer.md) — charter, state, clusters
+- [Maintenance & Tuning](guides/maintenance-and-tuning.md) — decay, consolidate, validate, value function
+- [Deployment](guides/deployment.md) — releases and Burrito binaries
+
+## MCP tool surface
+
+Write flow:
+
+- `open_project_memory` → `start_session` → `append_step` → (auto-commit on
+  session end; `close_async` or `commit_session` for explicit flushes)
+
+Read flow:
+
+- `recall`, `get_node`, `get_session_state`, `list_projects`, `latest_memories`
+
+Summary layer (opt-in via `[summaries].enabled`):
+
+- `get_session_primer`, `get_cluster`, `set_charter`, `refresh_principal_memory`
+
+Graph maintenance:
+
+- `run_maintenance` with `decay`, `consolidate`, or `validate`
+
+See [MCP Tools](guides/mcp-tools.md) for the full reference.
+
+## Runtime layout
+
+All state lives under `$GINGKO_HOME` (default `~/.gingko`):
+
+```
+~/.gingko/
+├── config.toml          # runtime configuration
+├── memory/              # Mnemosyne DETS graph files, one subdir per project
+└── metadata.sqlite3     # projects, sessions, summaries
+```
+
+API keys are never written to `config.toml` — only the env-var names to read.
+Export `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or whichever provider keys your
+configured providers need.
+
+## Local development
+
+Asset toolchain requirement: Yarn 1.x, or Node with Corepack enabled.
+`mix setup` auto-detects `yarn`, then `corepack yarn`, and exits with a clear
+message if neither is available.
+
+```bash
+mix setup
+mix phx.server          # http://localhost:4000
+```
+
+The web UI has three main views:
+
+- `/` — project grid with live stats.
+- `/setup` — edit `config.toml` from the browser.
+- `/projects` — real-time graph monitor backed by Cytoscape.
 
 ## Testing
 
-Run the full test suite:
-
 ```bash
-mix test
+mix test                 # full suite
+mix precommit            # warnings-as-errors + deps.unlock --unused + format + test
 ```
 
-Run the MCP integration coverage directly:
+Integration coverage for the MCP tools lives in
+`test/gingko/mcp/write_flow_test.exs` and `test/gingko/mcp/read_flow_test.exs`.
 
-```bash
-mix test test/gingko/mcp/write_flow_test.exs test/gingko/mcp/read_flow_test.exs
-```
+## License
+
+See [LICENSE](LICENSE) if present, otherwise treat as all rights reserved.

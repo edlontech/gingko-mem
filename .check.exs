@@ -13,7 +13,8 @@
 
   ## list of tools (see `mix check` docs for a list of default curated tools)
   tools: [
-    {:npm_test, false}
+    {:npm_test, false},
+    {:unused_deps, false}
     ## curated tools may be disabled (e.g. the check for compilation warnings)
     # {:compiler, false},
 

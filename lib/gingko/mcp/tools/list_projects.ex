@@ -1,4 +1,9 @@
 defmodule Gingko.MCP.Tools.ListProjects do
+  @moduledoc """
+  MCP tool that lists every project registered with Gingko, returning the
+  identifier and metadata for each. Typically the first call an agent makes to
+  discover which project memories are available before opening one.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

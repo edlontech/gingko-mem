@@ -1,4 +1,6 @@
 defmodule GingkoWeb.Api.CharterController do
+  @moduledoc false
+
   use GingkoWeb, :controller
 
   alias Gingko.Summaries

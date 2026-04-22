@@ -174,7 +174,7 @@ defmodule Gingko.Memory.GraphViewTest do
       assert view.layout_mode == :force
       assert view.selection == %{node_id: nil, session_id: nil}
       assert view.expandable_nodes == []
-      assert length(view.nodes) >= 1
+      assert view.nodes != []
       assert view.stats.cluster_count >= 1
     end
 
@@ -226,8 +226,8 @@ defmodule Gingko.Memory.GraphViewTest do
       nodes_with_edges =
         Enum.filter(view.nodes, &(&1.degree > 0))
 
-      if length(view.edges) > 0 do
-        assert length(nodes_with_edges) >= 1
+      if view.edges != [] do
+        assert nodes_with_edges != []
       end
     end
 

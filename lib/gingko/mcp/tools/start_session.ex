@@ -1,4 +1,10 @@
 defmodule Gingko.MCP.Tools.StartSession do
+  @moduledoc """
+  MCP tool that begins a new memory session for a project. A session groups
+  related observation/action steps under a single stated goal. `open_project_memory`
+  must be called first. Sessions auto-commit their accumulated steps when they
+  end naturally, so callers normally do not need to invoke `close_async`.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

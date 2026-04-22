@@ -1,4 +1,6 @@
 defmodule GingkoWeb.Api.StepController do
+  @moduledoc false
+
   use GingkoWeb, :controller
 
   action_fallback GingkoWeb.Api.FallbackController

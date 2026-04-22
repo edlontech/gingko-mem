@@ -1,4 +1,6 @@
 defmodule GingkoWeb.ProjectLive.NodeInspectorComponent do
+  @moduledoc false
+
   use GingkoWeb, :live_component
 
   @impl true

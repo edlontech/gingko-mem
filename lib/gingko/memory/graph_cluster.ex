@@ -146,15 +146,17 @@ defmodule Gingko.Memory.GraphCluster do
         {new_queue, new_visited} =
           neighbors
           |> Enum.sort()
-          |> Enum.reduce({rest, visited}, fn neighbor, {q, v} ->
-            if MapSet.member?(v, neighbor) do
-              {q, v}
-            else
-              {:queue.in(neighbor, q), MapSet.put(v, neighbor)}
-            end
-          end)
+          |> Enum.reduce({rest, visited}, &enqueue_unvisited/2)
 
         bfs_loop(adjacency, new_queue, new_visited)
+    end
+  end
+
+  defp enqueue_unvisited(neighbor, {queue, visited}) do
+    if MapSet.member?(visited, neighbor) do
+      {queue, visited}
+    else
+      {:queue.in(neighbor, queue), MapSet.put(visited, neighbor)}
     end
   end
 
@@ -185,28 +187,27 @@ defmodule Gingko.Memory.GraphCluster do
 
   defp propagation_step(sorted_ids, adjacency, labels) do
     Enum.reduce(sorted_ids, labels, fn node_id, acc ->
-      neighbors = Map.get(adjacency, node_id, MapSet.new())
-
       neighbor_labels =
-        neighbors
+        adjacency
+        |> Map.get(node_id, MapSet.new())
         |> MapSet.to_list()
         |> Enum.map(&Map.get(acc, &1))
         |> Enum.reject(&is_nil/1)
 
-      case neighbor_labels do
-        [] ->
-          acc
-
-        _ ->
-          most_common =
-            neighbor_labels
-            |> Enum.frequencies()
-            |> Enum.max_by(fn {label, count} -> {count, label} end)
-            |> elem(0)
-
-          Map.put(acc, node_id, most_common)
+      case most_common_label(neighbor_labels) do
+        nil -> acc
+        label -> Map.put(acc, node_id, label)
       end
     end)
+  end
+
+  defp most_common_label([]), do: nil
+
+  defp most_common_label(labels) do
+    labels
+    |> Enum.frequencies()
+    |> Enum.max_by(fn {label, count} -> {count, label} end)
+    |> elem(0)
   end
 
   # -- Small component merging ---------------------------------------------

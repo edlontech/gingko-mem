@@ -1,4 +1,10 @@
 defmodule Gingko.MCP.Tools.AppendStep do
+  @moduledoc """
+  MCP tool that records a single observation/action pair into the active memory
+  session. Steps are the atomic units of memory: one observation (context,
+  findings, state) paired with the action taken in response. Called repeatedly
+  during a session, once per meaningful decision point.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

@@ -1,4 +1,6 @@
 defmodule GingkoWeb.Api.RefreshPrincipalMemoryController do
+  @moduledoc false
+
   use GingkoWeb, :controller
 
   alias Gingko.Summaries.Refresh

@@ -1,4 +1,9 @@
 defmodule Gingko.MCP.Tools.LatestMemories do
+  @moduledoc """
+  MCP tool that returns the most recently created memories from a project's
+  knowledge graph, sorted newest first. Useful for reviewing what the agent has
+  learned lately when there is no specific search query to recall against.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

@@ -1,4 +1,6 @@
 defmodule GingkoWeb.Api.ClusterController do
+  @moduledoc false
+
   use GingkoWeb, :controller
 
   alias Gingko.Summaries

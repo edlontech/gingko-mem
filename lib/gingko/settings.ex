@@ -973,11 +973,7 @@ defmodule Gingko.Settings do
   defp issue(path, message), do: %{path: path, message: message}
 
   defp error_message(error) do
-    cond do
-      is_exception(error) -> Exception.message(error)
-      is_binary(error) -> error
-      true -> inspect(error)
-    end
+    if is_exception(error), do: Exception.message(error), else: inspect(error)
   end
 
   defp qualified_model(%{provider: provider, model: model}) do
@@ -1066,18 +1062,15 @@ defmodule Gingko.Settings do
 
   defp value_function_to_toml(value_function) do
     Enum.reduce(@node_types, %{}, fn type, acc ->
-      case Map.get(value_function, type) do
-        nil ->
-          Map.put(acc, type, Map.fetch!(@vf_param_defaults, type))
-
-        params ->
-          Map.put(
-            acc,
-            type,
-            Map.new(@vf_param_keys, fn key -> {key, Map.fetch!(params, key)} end)
-          )
-      end
+      Map.put(acc, type, value_function_type_to_toml(value_function, type))
     end)
+  end
+
+  defp value_function_type_to_toml(value_function, type) do
+    case Map.get(value_function, type) do
+      nil -> Map.fetch!(@vf_param_defaults, type)
+      params -> Map.new(@vf_param_keys, fn key -> {key, Map.fetch!(params, key)} end)
+    end
   end
 
   defp default_toml! do

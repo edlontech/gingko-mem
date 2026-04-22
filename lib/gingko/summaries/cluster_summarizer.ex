@@ -72,9 +72,7 @@ defmodule Gingko.Summaries.ClusterSummarizer do
   defp format_memories([]), do: "(no memories)"
 
   defp format_memories(memories) do
-    memories
-    |> Enum.map(&format_memory/1)
-    |> Enum.join("\n")
+    Enum.map_join(memories, "\n", &format_memory/1)
   end
 
   defp format_memory(%{node: node}), do: "- #{memory_body(node)}"

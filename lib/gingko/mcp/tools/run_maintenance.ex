@@ -1,4 +1,16 @@
 defmodule Gingko.MCP.Tools.RunMaintenance do
+  @moduledoc """
+  MCP tool that triggers asynchronous graph maintenance on a project's memory.
+  Operations run in the background and publish their results through notifier
+  events. Supported operations:
+
+    * `"decay"` — prune low-utility nodes, weighted by recency, frequency, and
+      reward.
+    * `"consolidate"` — merge near-duplicate semantic nodes using embedding
+      similarity.
+    * `"validate"` — penalize abstract nodes that lack strong episodic
+      provenance.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

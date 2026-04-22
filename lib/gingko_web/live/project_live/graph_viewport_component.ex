@@ -1,4 +1,6 @@
 defmodule GingkoWeb.ProjectLive.GraphViewportComponent do
+  @moduledoc false
+
   use GingkoWeb, :live_component
 
   @impl true

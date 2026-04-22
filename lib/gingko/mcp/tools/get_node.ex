@@ -1,4 +1,10 @@
 defmodule Gingko.MCP.Tools.GetNode do
+  @moduledoc """
+  MCP tool that retrieves a single node from a project's knowledge graph along
+  with its metadata and directly connected neighbors. Used to drill into a node
+  returned by `recall`, or to traverse the graph by following links outward from
+  a known node.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

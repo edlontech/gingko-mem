@@ -1,4 +1,6 @@
 defmodule GingkoWeb.Endpoint do
+  @moduledoc false
+
   use Phoenix.Endpoint, otp_app: :gingko
 
   # The session will be stored in the cookie and signed,

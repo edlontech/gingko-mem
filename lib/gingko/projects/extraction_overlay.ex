@@ -119,17 +119,13 @@ defmodule Gingko.Projects.ExtractionOverlay do
     do: ExtractionProfile.customer_support()
 
   defp build_merged_profile(nil, %__MODULE__{} = overlay) do
-    cond do
-      map_size(overlay.steps) > 0 or is_binary(overlay.domain_context) ->
-        %ExtractionProfile{
-          name: :custom,
-          domain_context: overlay.domain_context || "",
-          overlays: overlay.steps,
-          value_function_overrides: overlay.value_function_overrides || %{}
-        }
-
-      true ->
-        nil
+    if map_size(overlay.steps) > 0 or is_binary(overlay.domain_context) do
+      %ExtractionProfile{
+        name: :custom,
+        domain_context: overlay.domain_context || "",
+        overlays: overlay.steps,
+        value_function_overrides: overlay.value_function_overrides || %{}
+      }
     end
   end
 
@@ -192,23 +188,27 @@ defmodule Gingko.Projects.ExtractionOverlay do
 
   defp validate_step_lengths(changeset) do
     case get_change(changeset, :steps) do
+      nil -> changeset
+      steps when is_map(steps) -> add_overlay_length_error(changeset, steps)
+    end
+  end
+
+  defp add_overlay_length_error(changeset, steps) do
+    case Enum.find(steps, &overlay_too_long?/1) do
       nil ->
         changeset
 
-      steps when is_map(steps) ->
-        case Enum.find(steps, fn {_k, v} ->
-               is_binary(v) and String.length(v) > @max_overlay_length
-             end) do
-          nil ->
-            changeset
-
-          {key, _} ->
-            add_error(
-              changeset,
-              :steps,
-              "overlay for #{key} exceeds #{@max_overlay_length} characters"
-            )
-        end
+      {key, _} ->
+        add_error(
+          changeset,
+          :steps,
+          "overlay for #{key} exceeds #{@max_overlay_length} characters"
+        )
     end
   end
+
+  defp overlay_too_long?({_key, value}) when is_binary(value),
+    do: String.length(value) > @max_overlay_length
+
+  defp overlay_too_long?(_), do: false
 end

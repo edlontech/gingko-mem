@@ -1,4 +1,11 @@
 defmodule Gingko.MCP.Tools.CloseAndCommit do
+  @moduledoc """
+  MCP tool that closes an active session and asynchronously commits its
+  accumulated steps to the knowledge graph. Returns as soon as the close is
+  queued; extraction and commit run in the background. Sessions auto-commit
+  when they end naturally, so this is only needed to force an early flush
+  mid-workflow (for example, before a long-running operation or context switch).
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

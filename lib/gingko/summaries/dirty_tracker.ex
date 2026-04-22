@@ -67,9 +67,10 @@ defmodule Gingko.Summaries.DirtyTracker do
     observed_at = DateTime.utc_now() |> DateTime.truncate(:second)
     clusters = Summaries.list_clusters(project_key)
 
-    Enum.reduce(tags, clusters, fn tag, acc ->
-      admit_tag(project_key, node_id, tag, acc, observed_at)
-    end)
+    _final_clusters =
+      Enum.reduce(tags, clusters, fn tag, acc ->
+        admit_tag(project_key, node_id, tag, acc, observed_at)
+      end)
 
     :ok
   end

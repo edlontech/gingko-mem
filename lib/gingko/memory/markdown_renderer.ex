@@ -7,9 +7,7 @@ defmodule Gingko.Memory.MarkdownRenderer do
   def render([]), do: "No memories found."
 
   def render(memories) when is_list(memories) do
-    memories
-    |> Enum.map(&render_memory/1)
-    |> Enum.join("\n\n---\n\n")
+    Enum.map_join(memories, "\n\n---\n\n", &render_memory/1)
   end
 
   defp render_memory(%{node: node, metadata: metadata}) do

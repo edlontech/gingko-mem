@@ -32,22 +32,8 @@ defmodule Gingko.Projects do
     result =
       Repo.transact(fn ->
         case Repo.get_by(Project, project_key: project_key) do
-          nil ->
-            with {:ok, project} <-
-                   %Project{}
-                   |> Project.changeset(%{
-                     project_key: project_key,
-                     display_name: Map.get(attrs, :display_name, project_key)
-                   })
-                   |> Repo.insert(),
-                 {:ok, _root_memory} <- create_root_memory(project, registry) do
-              {:ok, {project, :created}}
-            else
-              {:error, changeset} -> {:error, changeset}
-            end
-
-          %Project{} = project ->
-            {:ok, {project, :existing}}
+          nil -> create_project_with_root_memory(project_key, attrs, registry)
+          %Project{} = project -> {:ok, {project, :existing}}
         end
       end)
 
@@ -61,6 +47,19 @@ defmodule Gingko.Projects do
 
       {:error, _} = error ->
         error
+    end
+  end
+
+  defp create_project_with_root_memory(project_key, attrs, registry) do
+    changeset =
+      Project.changeset(%Project{}, %{
+        project_key: project_key,
+        display_name: Map.get(attrs, :display_name, project_key)
+      })
+
+    with {:ok, project} <- Repo.insert(changeset),
+         {:ok, _root_memory} <- create_root_memory(project, registry) do
+      {:ok, {project, :created}}
     end
   end
 

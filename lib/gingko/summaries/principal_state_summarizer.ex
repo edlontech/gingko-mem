@@ -91,12 +91,10 @@ defmodule Gingko.Summaries.PrincipalStateSummarizer do
   defp format_clusters([]), do: "(no clusters yet)"
 
   defp format_clusters(clusters) do
-    clusters
-    |> Enum.map(fn c ->
+    Enum.map_join(clusters, "\n", fn c ->
       headline = c.headline || "(no headline yet)"
       "- #{c.tag_label} (#{c.memory_count} memories): #{headline}"
     end)
-    |> Enum.join("\n")
   end
 
   defp llm_model do

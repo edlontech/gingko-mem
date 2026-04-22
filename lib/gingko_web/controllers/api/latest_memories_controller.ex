@@ -1,4 +1,6 @@
 defmodule GingkoWeb.Api.LatestMemoriesController do
+  @moduledoc false
+
   use GingkoWeb, :controller
 
   alias Gingko.Memory.MarkdownRenderer

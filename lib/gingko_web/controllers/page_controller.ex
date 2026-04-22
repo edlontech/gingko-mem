@@ -1,4 +1,6 @@
 defmodule GingkoWeb.PageController do
+  @moduledoc false
+
   use GingkoWeb, :controller
 
   def home(conn, _params) do

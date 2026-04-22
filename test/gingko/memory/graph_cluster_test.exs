@@ -48,7 +48,7 @@ defmodule Gingko.Memory.GraphClusterTest do
 
       assert {:clustered, clusters} = GraphCluster.cluster(graph)
       assert is_list(clusters)
-      assert length(clusters) > 0
+      assert clusters != []
     end
   end
 

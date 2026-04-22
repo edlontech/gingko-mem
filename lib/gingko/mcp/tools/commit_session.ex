@@ -1,4 +1,10 @@
 defmodule Gingko.MCP.Tools.CommitSession do
+  @moduledoc """
+  MCP tool that commits the accumulated steps of a session to the knowledge
+  graph and immediately starts a fresh session under the same project and goal.
+  Used to persist knowledge mid-workflow without losing session context; returns
+  the new `session_id` so callers can continue recording steps uninterrupted.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

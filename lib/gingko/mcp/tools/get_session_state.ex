@@ -1,4 +1,9 @@
 defmodule Gingko.MCP.Tools.GetSessionState do
+  @moduledoc """
+  MCP tool that reports a session's current lifecycle state (active, committed,
+  idle, etc.). Callers use this to check whether a session is still accepting
+  `append_step` calls or has already been committed.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

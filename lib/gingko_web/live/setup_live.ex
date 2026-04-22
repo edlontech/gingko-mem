@@ -1,4 +1,6 @@
 defmodule GingkoWeb.SetupLive do
+  @moduledoc false
+
   use GingkoWeb, :live_view
 
   alias Gingko.Settings

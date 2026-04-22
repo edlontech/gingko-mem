@@ -1,4 +1,6 @@
 defmodule GingkoWeb.Api.FallbackController do
+  @moduledoc false
+
   use GingkoWeb, :controller
 
   def call(conn, {:error, %{code: :project_not_open} = error}) do

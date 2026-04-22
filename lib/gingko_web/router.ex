@@ -1,4 +1,6 @@
 defmodule GingkoWeb.Router do
+  @moduledoc false
+
   use GingkoWeb, :router
 
   pipeline :browser do

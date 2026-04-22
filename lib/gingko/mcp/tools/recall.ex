@@ -1,4 +1,10 @@
 defmodule Gingko.MCP.Tools.Recall do
+  @moduledoc """
+  MCP tool that searches a project's knowledge graph by semantic similarity,
+  returning memories, observations, and actions from past sessions that match
+  the query. The search can optionally be scoped to a specific session for
+  tighter, context-local retrieval.
+  """
   use Anubis.Server.Component, type: :tool
 
   alias Gingko.MCP.ToolResponse

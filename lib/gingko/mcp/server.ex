@@ -1,4 +1,13 @@
 defmodule Gingko.MCP.Server do
+  @moduledoc """
+  Anubis MCP server entrypoint for Gingko. Declares the public set of memory
+  tools that external agents can invoke over the `/mcp` HTTP transport,
+  spanning the write flow (`open_project_memory` -> `start_session` ->
+  `append_step` -> `commit_session` / `close_async`) and the read flow
+  (`recall`, `get_node`, `get_session_state`, `list_projects`,
+  `latest_memories`, `get_session_primer`, `get_cluster`), along with the
+  maintenance and charter operations.
+  """
   use Anubis.Server,
     name: "gingko",
     version: "0.1.0",

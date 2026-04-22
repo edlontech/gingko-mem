@@ -12,7 +12,8 @@ defmodule Gingko.MixProject do
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
-      releases: releases()
+      releases: releases(),
+      dialyzer: [plt_add_apps: [:mix]]
     ]
   end
 

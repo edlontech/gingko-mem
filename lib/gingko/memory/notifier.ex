@@ -346,22 +346,7 @@ defmodule Gingko.Memory.Notifier do
     case Mnemosyne.get_graph(repo_id) do
       %{nodes: nodes} ->
         {total_nodes, total_link_count, orphan_count, confidence_sum, semantic_count} =
-          Enum.reduce(Map.values(nodes), {0, 0, 0, 0.0, 0}, fn node,
-                                                               {n, links, orphans, conf_sum,
-                                                                sem_count} ->
-            link_size =
-              Enum.reduce(node.links, 0, fn {_type, ids}, acc -> acc + MapSet.size(ids) end)
-
-            is_orphan = if link_size == 0, do: 1, else: 0
-
-            case node do
-              %Mnemosyne.Graph.Node.Semantic{confidence: c} ->
-                {n + 1, links + link_size, orphans + is_orphan, conf_sum + c, sem_count + 1}
-
-              _ ->
-                {n + 1, links + link_size, orphans + is_orphan, conf_sum, sem_count}
-            end
-          end)
+          Enum.reduce(Map.values(nodes), {0, 0, 0, 0.0, 0}, &accumulate_graph_stats/2)
 
         avg_confidence =
           if semantic_count > 0, do: confidence_sum / semantic_count, else: 0.0
@@ -377,6 +362,19 @@ defmodule Gingko.Memory.Notifier do
         %{}
     end
   end
+
+  defp accumulate_graph_stats(node, {n, links, orphans, conf_sum, sem_count}) do
+    link_size =
+      Enum.reduce(node.links, 0, fn {_type, ids}, acc -> acc + MapSet.size(ids) end)
+
+    is_orphan = if link_size == 0, do: 1, else: 0
+    {conf_delta, sem_delta} = semantic_contribution(node)
+
+    {n + 1, links + link_size, orphans + is_orphan, conf_sum + conf_delta, sem_count + sem_delta}
+  end
+
+  defp semantic_contribution(%Mnemosyne.Graph.Node.Semantic{confidence: c}), do: {c, 1}
+  defp semantic_contribution(_), do: {0.0, 0}
 
   defp changeset_node_ids(changeset) do
     changeset

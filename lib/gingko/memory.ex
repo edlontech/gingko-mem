@@ -231,20 +231,7 @@ defmodule Gingko.Memory do
         if memory.repo_id in Mnemosyne.list_repos() do
           {:ok, project_result(memory, true)}
         else
-          open_opts =
-            [backend: backend_for_path(memory.dets_path)]
-            |> maybe_put_project_config(project_id)
-
-          case Mnemosyne.open_repo(memory.repo_id, open_opts) do
-            {:ok, _pid} ->
-              {:ok, project_result(memory, false)}
-
-            {:error, %RepoError{reason: :already_open}} ->
-              {:ok, project_result(memory, true)}
-
-            {:error, error} ->
-              normalize_error(error)
-          end
+          open_repo_for_memory(project_id, memory)
         end
 
       maybe_seed_playbook(project_id, result)
@@ -252,6 +239,18 @@ defmodule Gingko.Memory do
     else
       {:error, %Ecto.Changeset{} = changeset} ->
         {:error, %{code: :project_registration_failed, message: inspect(changeset.errors)}}
+    end
+  end
+
+  defp open_repo_for_memory(project_id, memory) do
+    open_opts =
+      [backend: backend_for_path(memory.dets_path)]
+      |> maybe_put_project_config(project_id)
+
+    case Mnemosyne.open_repo(memory.repo_id, open_opts) do
+      {:ok, _pid} -> {:ok, project_result(memory, false)}
+      {:error, %RepoError{reason: :already_open}} -> {:ok, project_result(memory, true)}
+      {:error, error} -> normalize_error(error)
     end
   end
 
@@ -456,20 +455,21 @@ defmodule Gingko.Memory do
       "Starting memory session for project_id=#{project_id} repo_id=#{project.repo_id}"
     )
 
-    with {:ok, session_id} <- Mnemosyne.start_session(goal, repo: project.repo_id) do
-      Logger.debug("Started memory session session_id=#{session_id} project_id=#{project_id}")
-      persist_session_open(project_id, session_id, goal)
+    case Mnemosyne.start_session(goal, repo: project.repo_id) do
+      {:ok, session_id} ->
+        Logger.debug("Started memory session session_id=#{session_id} project_id=#{project_id}")
+        persist_session_open(project_id, session_id, goal)
 
-      {:ok,
-       %{
-         project_id: project_id,
-         repo_id: project.repo_id,
-         session_id: session_id,
-         agent: Map.get(attrs, :agent),
-         thread_id: Map.get(attrs, :thread_id),
-         state: :collecting
-       }}
-    else
+        {:ok,
+         %{
+           project_id: project_id,
+           repo_id: project.repo_id,
+           session_id: session_id,
+           agent: Map.get(attrs, :agent),
+           thread_id: Map.get(attrs, :thread_id),
+           state: :collecting
+         }}
+
       {:error, error} ->
         Logger.debug(
           "Failed to start memory session for project_id=#{project_id}: #{Exception.message(error)}"
@@ -622,26 +622,30 @@ defmodule Gingko.Memory do
     project = root_memory_descriptor(project_id)
     repo_id = project.repo_id
 
-    with {:ok, metadata_map} <- Mnemosyne.get_metadata(repo_id, node_ids) do
-      entries =
-        node_ids
-        |> Enum.map(fn node_id ->
-          case Mnemosyne.get_node(repo_id, node_id) do
-            {:ok, %{} = node} ->
-              %{
-                node: node |> Serializer.node() |> Serializer.without_embedding(),
-                metadata: Serializer.metadata(Map.get(metadata_map, node_id))
-              }
+    case Mnemosyne.get_metadata(repo_id, node_ids) do
+      {:ok, metadata_map} ->
+        entries =
+          node_ids
+          |> Enum.map(&serialize_node_entry(repo_id, &1, metadata_map))
+          |> Enum.reject(&is_nil/1)
 
-            _ ->
-              nil
-          end
-        end)
-        |> Enum.reject(&is_nil/1)
+        {:ok, entries}
 
-      {:ok, entries}
-    else
-      {:error, error} -> normalize_error(error)
+      {:error, error} ->
+        normalize_error(error)
+    end
+  end
+
+  defp serialize_node_entry(repo_id, node_id, metadata_map) do
+    case Mnemosyne.get_node(repo_id, node_id) do
+      {:ok, %{} = node} ->
+        %{
+          node: node |> Serializer.node() |> Serializer.without_embedding(),
+          metadata: Serializer.metadata(Map.get(metadata_map, node_id))
+        }
+
+      _ ->
+        nil
     end
   end
 

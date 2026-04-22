@@ -175,24 +175,7 @@ defmodule Gingko.Memory.GraphView do
 
     graph.nodes
     |> Map.values()
-    |> Enum.flat_map(fn node ->
-      case Map.get(cluster_lookup, node.id) do
-        nil ->
-          []
-
-        source_cluster ->
-          Enum.flat_map(node.links, fn {_type, ids} ->
-            ids
-            |> Enum.map(fn linked_id -> Map.get(cluster_lookup, linked_id) end)
-            |> Enum.reject(&is_nil/1)
-            |> Enum.reject(&(&1 == source_cluster))
-            |> Enum.map(fn target_cluster ->
-              [s, t] = Enum.sort([source_cluster, target_cluster])
-              {s, t}
-            end)
-          end)
-      end
-    end)
+    |> Enum.flat_map(&cluster_edges_for_node(&1, cluster_lookup))
     |> Enum.frequencies()
     |> Enum.map(fn {{source, target}, count} ->
       %{
@@ -202,6 +185,26 @@ defmodule Gingko.Memory.GraphView do
         type: "inter_cluster",
         weight: div(count, 2)
       }
+    end)
+  end
+
+  defp cluster_edges_for_node(node, cluster_lookup) do
+    case Map.get(cluster_lookup, node.id) do
+      nil ->
+        []
+
+      source_cluster ->
+        Enum.flat_map(node.links, &link_cluster_pairs(&1, source_cluster, cluster_lookup))
+    end
+  end
+
+  defp link_cluster_pairs({_type, ids}, source_cluster, cluster_lookup) do
+    ids
+    |> Enum.map(&Map.get(cluster_lookup, &1))
+    |> Enum.reject(&(is_nil(&1) or &1 == source_cluster))
+    |> Enum.map(fn target_cluster ->
+      [s, t] = Enum.sort([source_cluster, target_cluster])
+      {s, t}
     end)
   end
 
@@ -275,19 +278,25 @@ defmodule Gingko.Memory.GraphView do
   defp build_edges(graph, visible_id_set) do
     graph.nodes
     |> Map.values()
-    |> Enum.flat_map(fn node ->
-      Enum.flat_map(node.links, fn {type, ids} ->
-        ids
-        |> Enum.filter(fn linked_id ->
-          MapSet.member?(visible_id_set, node.id) and MapSet.member?(visible_id_set, linked_id)
-        end)
-        |> Enum.map(fn linked_id ->
-          [source, target] = Enum.sort([node.id, linked_id])
-          %{id: "#{source}:#{target}", source: source, target: target, type: type}
-        end)
-      end)
-    end)
+    |> Enum.flat_map(&node_edges(&1, visible_id_set))
     |> Enum.uniq_by(& &1.id)
+  end
+
+  defp node_edges(node, visible_id_set) do
+    if MapSet.member?(visible_id_set, node.id) do
+      Enum.flat_map(node.links, &link_edges(node.id, &1, visible_id_set))
+    else
+      []
+    end
+  end
+
+  defp link_edges(node_id, {type, ids}, visible_id_set) do
+    ids
+    |> Enum.filter(&MapSet.member?(visible_id_set, &1))
+    |> Enum.map(fn linked_id ->
+      [source, target] = Enum.sort([node_id, linked_id])
+      %{id: "#{source}:#{target}", source: source, target: target, type: type}
+    end)
   end
 
   defp centered_visible_ids(graph, node_id, expanded_node_ids) do

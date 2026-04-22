@@ -12,13 +12,10 @@ name: Release Flow
 
 jobs:
   release-please:
-    strategy:
-      matrix:
-        elixir: ["1.19.4"]
-        otp: ["28.3"]
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: actions/create-github-app-token@v2
         id: app-token
@@ -31,3 +28,51 @@ jobs:
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ steps.app-token.outputs.token }}
+
+  build-release:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+          - os: macos-latest
+            target: macos_silicon
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_KEY }}
+
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.4"
+          otp-version: "28.3"
+
+      - name: Install Just
+        uses: extractions/setup-just@v2
+
+      - name: Install xz (macOS)
+        if: runner.os == 'macOS'
+        run: brew install xz
+
+      - name: Build Burrito release (${{ matrix.target }})
+        run: just build-target ${{ matrix.target }}
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          cd burrito_out
+          for f in *; do
+            gh release upload "$TAG" "$f" --clobber
+          done

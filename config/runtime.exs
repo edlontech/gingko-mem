@@ -16,9 +16,9 @@ import Config
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
-config :gingko, GingkoWeb.Endpoint, server: true
-
 if config_env() != :test do
+  config :gingko, GingkoWeb.Endpoint, server: true
+
   settings = Gingko.Settings.load()
   memory_runtime = Gingko.Settings.mnemosyne_runtime(settings)
 

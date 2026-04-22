@@ -5,7 +5,8 @@
   "packages": {
     ".": {
       "package-name": "gingko",
-      "changelogpath": "CHANGELOG.md"
+      "changelogpath": "CHANGELOG.md",
+      "draft": true
     }
   }
 }

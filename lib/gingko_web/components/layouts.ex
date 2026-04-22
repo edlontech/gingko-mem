@@ -44,7 +44,7 @@ defmodule GingkoWeb.Layouts do
           <div class="gingko-sidebar__panel">
             <a href={~p"/"} class="flex items-center gap-3">
               <span class="flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-content shadow-lg">
-                <img src={~p"/images/logo.svg"} width="24" />
+                <img src={~p"/images/logo.png"} width="24" />
               </span>
               <div>
                 <p class="font-serif text-2xl tracking-[0.08em]">Gingko</p>
@@ -78,7 +78,7 @@ defmodule GingkoWeb.Layouts do
             <div class="flex min-w-0 items-center gap-4">
               <a href={~p"/"} class="flex items-center gap-3 lg:hidden">
                 <span class="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-content shadow-lg">
-                  <img src={~p"/images/logo.svg"} width="20" />
+                  <img src={~p"/images/logo.png"} width="20" />
                 </span>
                 <div>
                   <p class="font-serif text-xl tracking-[0.08em]">Gingko</p>

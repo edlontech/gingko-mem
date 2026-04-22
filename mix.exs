@@ -121,15 +121,16 @@ defmodule Gingko.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get", "assets.setup", "assets.build"],
+      setup: ["deps.get", "assets.build"],
       test: ["test"],
       "assets.setup": [
         "cmd --cd assets #{assets_install_command()}",
         "tailwind.install --if-missing",
         "esbuild.install --if-missing"
       ],
-      "assets.build": ["compile", "tailwind gingko", "esbuild gingko"],
+      "assets.build": ["assets.setup", "compile", "tailwind gingko", "esbuild gingko"],
       "assets.deploy": [
+        "assets.setup",
         "compile",
         "tailwind gingko --minify",
         "esbuild gingko --minify",

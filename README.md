@@ -93,7 +93,3 @@ mix precommit            # warnings-as-errors + deps.unlock --unused + format + 
 
 Integration coverage for the MCP tools lives in
 `test/gingko/mcp/write_flow_test.exs` and `test/gingko/mcp/read_flow_test.exs`.
-
-## License
-
-See [LICENSE](LICENSE) if present, otherwise treat as all rights reserved.

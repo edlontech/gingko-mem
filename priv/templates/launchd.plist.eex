@@ -3,16 +3,16 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string><%= label %></string>
+    <string><%= @label %></string>
     <key>ProgramArguments</key>
     <array>
-        <string><%= binary_path %></string>
+        <string><%= @binary_path %></string>
         <string>start</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
         <key>GINGKO_HOME</key>
-        <string><%= gingko_home %></string>
+        <string><%= @gingko_home %></string>
     </dict>
     <key>RunAtLoad</key>
     <true/>
@@ -22,10 +22,10 @@
         <false/>
     </dict>
     <key>StandardOutPath</key>
-    <string><%= stdout_log %></string>
+    <string><%= @stdout_log %></string>
     <key>StandardErrorPath</key>
-    <string><%= stderr_log %></string>
+    <string><%= @stderr_log %></string>
     <key>WorkingDirectory</key>
-    <string><%= gingko_home %></string>
+    <string><%= @gingko_home %></string>
 </dict>
 </plist>

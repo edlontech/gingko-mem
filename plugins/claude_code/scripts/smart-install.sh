@@ -9,7 +9,7 @@ GINGKO_HOME="${GINGKO_HOME:-$HOME/.gingko}"
 GINGKO_BIN_DIR="$GINGKO_HOME/bin"
 GINGKO_BIN="$GINGKO_BIN_DIR/gingko"
 MARKER="$GINGKO_HOME/.install-version"
-REPO="edlontech/gingko"
+REPO="edlontech/gingko-mem"
 
 if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
 	echo "[gingko] CLAUDE_PLUGIN_ROOT not set" >&2
@@ -27,7 +27,7 @@ if [ -z "$VERSION" ]; then
 	echo "[gingko] could not parse version from $PLUGIN_JSON" >&2
 	exit 1
 fi
-TAG="v$VERSION"
+TAG="gingko-v$VERSION"
 
 if [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$VERSION" ] && [ -x "$GINGKO_BIN" ]; then
 	exit 0
@@ -38,7 +38,6 @@ ARCH=$(uname -m)
 case "$OS-$ARCH" in
 	Darwin-arm64) TARGET="macos_silicon" ;;
 	Linux-x86_64) TARGET="linux" ;;
-	Linux-aarch64 | Linux-arm64) TARGET="linux_arm" ;;
 	*)
 		echo "[gingko] unsupported platform: $OS-$ARCH" >&2
 		exit 1

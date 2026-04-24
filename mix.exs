@@ -35,7 +35,8 @@ defmodule Gingko.MixProject do
           targets: [
             macos_silicon: [os: :darwin, cpu: :aarch64],
             linux: [os: :linux, cpu: :x86_64],
-            linux_arm: [os: :linux, cpu: :aarch64]
+            linux_arm: [os: :linux, cpu: :aarch64],
+            windows: [os: :windows, cpu: :x86_64]
           ]
         ]
       ]

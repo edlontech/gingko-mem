@@ -50,6 +50,8 @@ jobs:
             target: linux
           - os: macos-latest
             target: macos_silicon
+          - os: windows-latest
+            target: windows
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/create-github-app-token@v2
@@ -73,6 +75,7 @@ jobs:
           node-version: "20"
 
       - name: Enable Corepack (Yarn)
+        shell: bash
         run: |
           corepack enable
           corepack prepare yarn@1.22.22 --activate
@@ -89,7 +92,12 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install xz
 
+      - name: Install 7zip (Windows)
+        if: runner.os == 'Windows'
+        run: choco install 7zip -y --no-progress
+
       - name: Build Burrito release (${{ matrix.target }})
+        shell: bash
         run: just build-target ${{ matrix.target }}
 
       - name: Upload release assets

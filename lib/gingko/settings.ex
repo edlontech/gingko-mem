@@ -931,6 +931,7 @@ defmodule Gingko.Settings do
   defp validate(parsed, opts) do
     llm_resolver = Keyword.get(opts, :llm_resolver, &default_llm_resolver/1)
     embedding_resolver = Keyword.get(opts, :embedding_resolver, &default_embedding_resolver/1)
+    os_type = Keyword.get(opts, :os_type, &:os.type/0)
 
     []
     |> validate_required(parsed.llm.provider, "llm.provider")
@@ -938,7 +939,12 @@ defmodule Gingko.Settings do
     |> validate_required(parsed.llm.model, "llm.model")
     |> validate_required(parsed.embeddings.model, "embeddings.model")
     |> validate_model_spec(parsed.llm, llm_resolver, "llm.model")
-    |> validate_embedding_model_spec(parsed.embeddings, embedding_resolver, "embeddings.model")
+    |> validate_embedding_model_spec(
+      parsed.embeddings,
+      embedding_resolver,
+      os_type,
+      "embeddings.model"
+    )
   end
 
   defp validate_required(issues, value, path) do
@@ -963,10 +969,17 @@ defmodule Gingko.Settings do
     end
   end
 
-  defp validate_embedding_model_spec(issues, %{provider: "bumblebee"}, _resolver, _path),
-    do: issues
+  defp validate_embedding_model_spec(issues, %{provider: "bumblebee"}, _resolver, os_type, path) do
+    case os_type.() do
+      {:win32, _} ->
+        [issue(path, "bumblebee embeddings are not supported on Windows") | issues]
 
-  defp validate_embedding_model_spec(issues, config, resolver, path) do
+      _ ->
+        issues
+    end
+  end
+
+  defp validate_embedding_model_spec(issues, config, resolver, _os_type, path) do
     validate_model_spec(issues, config, resolver, path)
   end
 
@@ -1090,12 +1103,13 @@ defmodule Gingko.Settings do
   defp provider_options(kind, opts) do
     providers_source = Keyword.get(opts, :providers_source, &default_providers_source/0)
     models_source = Keyword.get(opts, :models_source, &default_models_source/1)
+    os_type = Keyword.get(opts, :os_type, &:os.type/0)
 
     providers_source.()
     |> Enum.map(&provider_name/1)
     |> Enum.reject(&is_nil/1)
     |> Enum.filter(&provider_supported?(&1, kind, models_source))
-    |> maybe_add_bumblebee(kind)
+    |> maybe_add_bumblebee(kind, os_type)
     |> Enum.sort()
   end
 
@@ -1120,8 +1134,14 @@ defmodule Gingko.Settings do
     :embedding in outputs
   end
 
-  defp maybe_add_bumblebee(providers, :embedding), do: Enum.uniq(["bumblebee" | providers])
-  defp maybe_add_bumblebee(providers, _kind), do: providers
+  defp maybe_add_bumblebee(providers, :embedding, os_type) do
+    case os_type.() do
+      {:win32, _} -> providers
+      _ -> Enum.uniq(["bumblebee" | providers])
+    end
+  end
+
+  defp maybe_add_bumblebee(providers, _kind, _os_type), do: providers
 
   defp provider_name(%{id: id}), do: provider_name(id)
   defp provider_name(id) when is_atom(id), do: Atom.to_string(id)

@@ -1,4 +1,6 @@
-default_target := if os() == "macos" { "macos_silicon" } else if arch() == "aarch64" { "linux_arm" } else { "linux" }
+set windows-shell := ["bash", "-cu"]
+
+default_target := if os() == "macos" { "macos_silicon" } else if os() == "windows" { "windows" } else if arch() == "aarch64" { "linux_arm" } else { "linux" }
 
 # Build for the current native platform
 build: (build-target default_target)
@@ -17,6 +19,9 @@ build-linux: (build-target "linux")
 
 # Build for Linux aarch64
 build-linux-arm: (build-target "linux_arm")
+
+# Build for Windows x86_64
+build-windows: (build-target "windows")
 
 # Clean build artifacts
 clean:

@@ -430,6 +430,26 @@ defmodule Gingko.Settings do
   @spec embedding_provider_options(keyword()) :: [String.t()]
   def embedding_provider_options(opts \\ []), do: provider_options(:embedding, opts)
 
+  @spec model_options(String.t() | atom() | nil, :llm | :embedding, keyword()) :: [String.t()]
+  def model_options(provider, kind, opts \\ [])
+  def model_options(nil, _kind, _opts), do: []
+  def model_options("", _kind, _opts), do: []
+  def model_options("bumblebee", :embedding, _opts), do: [@default_bumblebee_embedding_model]
+  def model_options("bumblebee", :llm, _opts), do: []
+
+  def model_options(provider, kind, opts) do
+    models_source = Keyword.get(opts, :models_source, &default_models_source/1)
+
+    provider
+    |> provider_to_atom()
+    |> models_source.()
+    |> Enum.filter(&keep_model?(&1, kind))
+    |> Enum.map(&model_name/1)
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
   defp parsed_config(source) do
     embeddings_provider =
       pick(
@@ -1133,6 +1153,16 @@ defmodule Gingko.Settings do
 
     :embedding in outputs
   end
+
+  defp keep_model?(model, :embedding), do: embedding_model?(model)
+  defp keep_model?(model, :llm), do: not embedding_model?(model)
+
+  defp model_name(%{id: id}) when is_binary(id) and id != "", do: id
+  defp model_name(%{id: id}) when is_atom(id) and not is_nil(id), do: Atom.to_string(id)
+  defp model_name(%{"id" => id}) when is_binary(id) and id != "", do: id
+  defp model_name(%{name: name}) when is_binary(name) and name != "", do: name
+  defp model_name(%{"name" => name}) when is_binary(name) and name != "", do: name
+  defp model_name(_), do: nil
 
   defp maybe_add_bumblebee(providers, :embedding, os_type) do
     case os_type.() do

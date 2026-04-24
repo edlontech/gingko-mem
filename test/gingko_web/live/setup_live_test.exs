@@ -514,4 +514,119 @@ defmodule GingkoWeb.SetupLiveTest do
       assert settings.value_function["procedural"]["threshold"] == 0.8
     end
   end
+
+  describe "[models] provider/model combobox" do
+    @tag :tmp_dir
+    test "renders provider and model options for the loaded provider", %{
+      conn: conn,
+      tmp_dir: tmp_dir
+    } do
+      Application.put_env(
+        :gingko,
+        :settings_opts,
+        home: tmp_dir,
+        llm_resolver: fn
+          "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        embedding_resolver: fn
+          "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        providers_source: fn -> [:openai, :anthropic] end,
+        models_source: fn
+          :openai ->
+            [
+              %{id: "gpt-4o", modalities: %{output: [:text]}},
+              %{id: "gpt-4o-mini", modalities: %{output: [:text]}},
+              %{id: "text-embedding-3-small", modalities: %{output: [:embedding]}}
+            ]
+
+          :anthropic ->
+            [%{id: "claude-sonnet-4", modalities: %{output: [:text]}}]
+
+          _ ->
+            []
+        end
+      )
+
+      {:ok, _view, html} = live conn, ~p"/setup"
+
+      assert html =~ ~s(data-value="openai")
+      assert html =~ ~s(data-value="anthropic")
+      assert html =~ ~s(data-value="gpt-4o")
+      assert html =~ ~s(data-value="gpt-4o-mini")
+      assert html =~ ~s(data-value="text-embedding-3-small")
+    end
+
+    @tag :tmp_dir
+    test "changing the provider clears the model field and refreshes the model list", %{
+      conn: conn,
+      tmp_dir: tmp_dir
+    } do
+      Application.put_env(
+        :gingko,
+        :settings_opts,
+        home: tmp_dir,
+        llm_resolver: fn
+          "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+          "anthropic:claude-sonnet-4" -> {:ok, %{provider: :anthropic}}
+          _ -> {:error, :unknown_model}
+        end,
+        embedding_resolver: fn
+          "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        providers_source: fn -> [:openai, :anthropic] end,
+        models_source: fn
+          :openai ->
+            [
+              %{id: "gpt-4o-mini", modalities: %{output: [:text]}},
+              %{id: "text-embedding-3-small", modalities: %{output: [:embedding]}}
+            ]
+
+          :anthropic ->
+            [%{id: "claude-sonnet-4", modalities: %{output: [:text]}}]
+
+          _ ->
+            []
+        end
+      )
+
+      {:ok, view, html} = live conn, ~p"/setup"
+      assert html =~ ~s(data-value="gpt-4o-mini")
+      refute html =~ ~s(data-value="claude-sonnet-4")
+
+      new_html =
+        view
+        |> form("#settings-form", %{
+          "settings" => %{
+            "paths" => %{"memory" => "memory"},
+            "llm" => %{"provider" => "anthropic", "model" => "gpt-4o-mini"},
+            "embeddings" => %{
+              "provider" => "openai",
+              "model" => "text-embedding-3-small"
+            },
+            "server" => %{"host" => "127.0.0.1", "port" => "4000"},
+            "mnemosyne" => %{
+              "intent_merge_threshold" => "0.8",
+              "intent_identity_threshold" => "0.95",
+              "refinement_threshold" => "0.6",
+              "auto_commit" => "true",
+              "flush_timeout_ms" => "120000",
+              "session_timeout_ms" => "600000",
+              "trace_verbosity" => "summary"
+            }
+          }
+        })
+        |> render_change()
+
+      assert new_html =~ ~s(data-value="claude-sonnet-4")
+      refute new_html =~ ~s(data-value="gpt-4o-mini")
+
+      [_, model_input] = Regex.run(~r/(<input[^>]*id="settings_llm_0_model"[^>]*>)/, new_html)
+      refute model_input =~ ~s(value="gpt-4o-mini")
+      refute model_input =~ ~s(value="claude-sonnet-4")
+    end
+  end
 end

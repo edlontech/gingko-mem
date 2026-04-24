@@ -487,6 +487,33 @@ defmodule Gingko.SettingsTest do
            ) == ["bumblebee", "openai"]
   end
 
+  test "model_options/3 lists LLM models for a provider, sorted, excluding embeddings" do
+    models_source = fn
+      :openai ->
+        [
+          %{id: "gpt-4o", modalities: %{output: [:text]}},
+          %{id: "gpt-4o-mini", modalities: %{output: [:text]}},
+          %{id: "text-embedding-3-small", modalities: %{output: [:embedding]}}
+        ]
+
+      _ ->
+        []
+    end
+
+    assert Settings.model_options("openai", :llm, models_source: models_source) ==
+             ["gpt-4o", "gpt-4o-mini"]
+
+    assert Settings.model_options("openai", :embedding, models_source: models_source) ==
+             ["text-embedding-3-small"]
+  end
+
+  test "model_options/3 handles empty/nil providers and bumblebee" do
+    assert Settings.model_options(nil, :llm) == []
+    assert Settings.model_options("", :embedding) == []
+    assert Settings.model_options("bumblebee", :embedding) == ["intfloat/e5-base-v2"]
+    assert Settings.model_options("bumblebee", :llm) == []
+  end
+
   @tag :tmp_dir
   test "load/1 treats bumblebee embeddings as ready without an API key", %{tmp_dir: tmp_dir} do
     config_path = Settings.ensure_defaults!(home: tmp_dir)

@@ -296,6 +296,249 @@ defmodule GingkoWeb.CoreComponents do
     """
   end
 
+  @doc """
+  Renders a searchable combobox (text input + filterable dropdown of options).
+
+  Typing filters the option list client-side; clicking or pressing Enter on an
+  option fills the input and dispatches a change event so the enclosing form's
+  `phx-change` handler fires. Freeform text is allowed — the input accepts any
+  value the user types, not just the listed options.
+
+  ## Examples
+
+  ```heex
+  <.combobox
+    field={@form[:provider]}
+    label="Provider"
+    options={@providers}
+    placeholder="Select or search a provider"
+  />
+  ```
+  """
+  attr :id, :any, default: nil
+  attr :name, :any
+  attr :label, :string, default: nil
+  attr :value, :any
+  attr :placeholder, :string, default: nil
+  attr :options, :list, default: []
+
+  attr :field, Phoenix.HTML.FormField,
+    doc: "a form field struct retrieved from the form, for example: @form[:provider]"
+
+  attr :errors, :list, default: []
+  attr :class, :any, default: nil
+  attr :error_class, :any, default: nil
+
+  attr :rest, :global, include: ~w(autocomplete disabled readonly required)
+
+  def combobox(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns
+    |> assign(field: nil, id: assigns.id || field.id)
+    |> assign(:errors, Enum.map(errors, &translate_error(&1)))
+    |> assign_new(:name, fn -> field.name end)
+    |> assign_new(:value, fn -> field.value end)
+    |> combobox()
+  end
+
+  def combobox(assigns) do
+    ~H"""
+    <div id={"#{@id}-combobox"} class="fieldset mb-2" phx-hook=".Combobox" data-combobox>
+      <label>
+        <span :if={@label} class="label mb-1">{@label}</span>
+        <div class="relative w-full">
+          <input
+            type="text"
+            id={@id}
+            name={@name}
+            value={Phoenix.HTML.Form.normalize_value("text", @value)}
+            placeholder={@placeholder}
+            autocomplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded="false"
+            aria-controls={"#{@id}-listbox"}
+            data-combobox-input
+            class={[
+              @class || "w-full input",
+              @errors != [] && (@error_class || "input-error")
+            ]}
+            {@rest}
+          />
+          <ul
+            id={"#{@id}-listbox"}
+            role="listbox"
+            tabindex="-1"
+            data-combobox-listbox
+            class="hidden absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-box border border-base-300 bg-base-100 py-1 shadow-lg"
+          >
+            <li
+              :for={{option, idx} <- Enum.with_index(@options)}
+              id={"#{@id}-option-#{idx}"}
+              role="option"
+              data-combobox-option
+              data-value={option}
+              class="cursor-pointer px-3 py-1.5 text-sm hover:bg-base-200"
+            >
+              {option}
+            </li>
+            <li
+              data-combobox-empty
+              class={[
+                "px-3 py-1.5 text-sm text-base-content/60",
+                @options != [] && "hidden"
+              ]}
+            >
+              No matches
+            </li>
+          </ul>
+        </div>
+      </label>
+      <.error :for={msg <- @errors}>{msg}</.error>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".Combobox">
+        export default {
+          mounted() {
+            this.input = this.el.querySelector("[data-combobox-input]")
+            this.listbox = this.el.querySelector("[data-combobox-listbox]")
+            this.activeIndex = -1
+
+            this._onInput = () => this._filter()
+            this._onFocus = () => this._open()
+            this._onClick = () => this._open()
+            this._onKeyDown = (e) => this._handleKey(e)
+            this._onListMouseDown = (e) => this._handleListMouseDown(e)
+            this._onDocMouseDown = (e) => this._handleDocMouseDown(e)
+
+            this.input.addEventListener("input", this._onInput)
+            this.input.addEventListener("focus", this._onFocus)
+            this.input.addEventListener("click", this._onClick)
+            this.input.addEventListener("keydown", this._onKeyDown)
+            this.listbox.addEventListener("mousedown", this._onListMouseDown)
+            document.addEventListener("mousedown", this._onDocMouseDown)
+          },
+
+          updated() {
+            if (!this.listbox.classList.contains("hidden")) {
+              this._filter()
+            }
+          },
+
+          destroyed() {
+            document.removeEventListener("mousedown", this._onDocMouseDown)
+          },
+
+          _open() {
+            this.listbox.classList.remove("hidden")
+            this.input.setAttribute("aria-expanded", "true")
+            this._filter()
+          },
+
+          _close() {
+            this.listbox.classList.add("hidden")
+            this.input.setAttribute("aria-expanded", "false")
+            this.activeIndex = -1
+            this._paintActive()
+          },
+
+          _filter() {
+            const query = (this.input.value || "").toLowerCase()
+            const options = this.listbox.querySelectorAll("[data-combobox-option]")
+            let visible = 0
+            options.forEach((opt) => {
+              const value = (opt.dataset.value || "").toLowerCase()
+              const match = value.includes(query)
+              opt.classList.toggle("hidden", !match)
+              if (match) visible++
+            })
+            const empty = this.listbox.querySelector("[data-combobox-empty]")
+            if (empty) empty.classList.toggle("hidden", visible > 0)
+            this.activeIndex = -1
+            this._paintActive()
+          },
+
+          _visibleOptions() {
+            return Array.from(this.listbox.querySelectorAll("[data-combobox-option]:not(.hidden)"))
+          },
+
+          _moveActive(delta) {
+            const options = this._visibleOptions()
+            if (options.length === 0) return
+            if (this.activeIndex < 0) {
+              this.activeIndex = delta > 0 ? 0 : options.length - 1
+            } else {
+              this.activeIndex = (this.activeIndex + delta + options.length) % options.length
+            }
+            this._paintActive()
+          },
+
+          _paintActive() {
+            const options = this._visibleOptions()
+            options.forEach((opt, i) => {
+              opt.classList.toggle("bg-base-200", i === this.activeIndex)
+            })
+            if (this.activeIndex >= 0 && options[this.activeIndex]) {
+              this.input.setAttribute("aria-activedescendant", options[this.activeIndex].id || "")
+              options[this.activeIndex].scrollIntoView({block: "nearest"})
+            } else {
+              this.input.removeAttribute("aria-activedescendant")
+            }
+          },
+
+          _handleKey(e) {
+            if (e.key === "ArrowDown") {
+              e.preventDefault()
+              if (this.listbox.classList.contains("hidden")) this._open()
+              this._moveActive(1)
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault()
+              if (this.listbox.classList.contains("hidden")) this._open()
+              this._moveActive(-1)
+            } else if (e.key === "Enter") {
+              const options = this._visibleOptions()
+              const active = options[this.activeIndex]
+              if (active && !this.listbox.classList.contains("hidden")) {
+                e.preventDefault()
+                this._select(active)
+              }
+            } else if (e.key === "Escape") {
+              if (!this.listbox.classList.contains("hidden")) {
+                e.preventDefault()
+                e.stopPropagation()
+                this._close()
+              }
+            } else if (e.key === "Tab") {
+              this._close()
+            }
+          },
+
+          _handleListMouseDown(e) {
+            const option = e.target.closest("[data-combobox-option]")
+            if (!option) return
+            e.preventDefault()
+            this._select(option)
+          },
+
+          _handleDocMouseDown(e) {
+            if (!this.el.contains(e.target)) {
+              this._close()
+            }
+          },
+
+          _select(option) {
+            const value = option.dataset.value || ""
+            this.input.value = value
+            this.input.dispatchEvent(new Event("input", {bubbles: true}))
+            this.input.dispatchEvent(new Event("change", {bubbles: true}))
+            this._close()
+            this.input.focus()
+          }
+        }
+      </script>
+    </div>
+    """
+  end
+
   # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""

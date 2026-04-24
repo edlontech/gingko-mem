@@ -42,6 +42,8 @@ defmodule GingkoWeb.SetupLive do
        form: nil,
        llm_providers: [],
        embedding_providers: [],
+       llm_models: [],
+       embedding_models: [],
        tabs: @tabs,
        active_tab: "general",
        pipeline_steps: Settings.pipeline_steps(),
@@ -52,25 +54,40 @@ defmodule GingkoWeb.SetupLive do
 
   @impl true
   def handle_params(_params, _uri, socket) do
-    settings = Settings.load(settings_opts())
+    opts = settings_opts()
+    settings = Settings.load(opts)
 
     {:noreply,
      assign(socket,
        settings: settings,
        form: settings_form(settings),
-       llm_providers: Settings.llm_provider_options(settings_opts()),
-       embedding_providers: Settings.embedding_provider_options(settings_opts())
+       llm_providers: Settings.llm_provider_options(opts),
+       embedding_providers: Settings.embedding_provider_options(opts),
+       llm_models: Settings.model_options(settings.llm.provider, :llm, opts),
+       embedding_models: Settings.model_options(settings.embeddings.provider, :embedding, opts)
      )}
   end
 
   @impl true
   def handle_event("validate", %{"settings" => attrs}, socket) do
-    settings = Settings.preview(attrs, settings_opts())
+    opts = settings_opts()
+
+    attrs =
+      attrs
+      |> maybe_clear_model("llm", socket.assigns.settings.llm.provider)
+      |> maybe_clear_model("embeddings", socket.assigns.settings.embeddings.provider)
+
+    settings = Settings.preview(attrs, opts)
 
     {:noreply,
      socket
      |> assign(:settings, settings)
-     |> assign(:form, settings_form(attrs))}
+     |> assign(:form, settings_form(attrs))
+     |> assign(:llm_models, Settings.model_options(settings.llm.provider, :llm, opts))
+     |> assign(
+       :embedding_models,
+       Settings.model_options(settings.embeddings.provider, :embedding, opts)
+     )}
   end
 
   @impl true
@@ -175,6 +192,8 @@ defmodule GingkoWeb.SetupLive do
                 settings={@settings}
                 llm_providers={@llm_providers}
                 embedding_providers={@embedding_providers}
+                llm_models={@llm_models}
+                embedding_models={@embedding_models}
               />
             </div>
 
@@ -250,6 +269,8 @@ defmodule GingkoWeb.SetupLive do
   attr :settings, :any, required: true
   attr :llm_providers, :list, required: true
   attr :embedding_providers, :list, required: true
+  attr :llm_models, :list, required: true
+  attr :embedding_models, :list, required: true
 
   defp models_panel(assigns) do
     ~H"""
@@ -259,16 +280,18 @@ defmodule GingkoWeb.SetupLive do
           <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">
             LLM
           </h2>
-          <.input
+          <.combobox
             field={llm_form[:provider]}
-            type="text"
             label="Provider"
-            list="llm-provider-options"
+            options={@llm_providers}
+            placeholder="Select or search a provider"
           />
-          <datalist id="llm-provider-options">
-            <option :for={provider <- @llm_providers} value={provider} />
-          </datalist>
-          <.input field={llm_form[:model]} type="text" label="Model" />
+          <.combobox
+            field={llm_form[:model]}
+            label="Model"
+            options={@llm_models}
+            placeholder={model_placeholder(@llm_models)}
+          />
         </div>
       </.inputs_for>
 
@@ -277,16 +300,18 @@ defmodule GingkoWeb.SetupLive do
           <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">
             Embeddings
           </h2>
-          <.input
+          <.combobox
             field={embedding_form[:provider]}
-            type="text"
             label="Provider"
-            list="embedding-provider-options"
+            options={@embedding_providers}
+            placeholder="Select or search a provider"
           />
-          <datalist id="embedding-provider-options">
-            <option :for={provider <- @embedding_providers} value={provider} />
-          </datalist>
-          <.input field={embedding_form[:model]} type="text" label="Model" />
+          <.combobox
+            field={embedding_form[:model]}
+            label="Model"
+            options={@embedding_models}
+            placeholder={model_placeholder(@embedding_models)}
+          />
           <p
             :if={@settings.embeddings.provider == "bumblebee"}
             class="text-sm text-base-content/70"
@@ -304,6 +329,9 @@ defmodule GingkoWeb.SetupLive do
     </section>
     """
   end
+
+  defp model_placeholder([]), do: "Pick a provider first"
+  defp model_placeholder(_), do: "Select or search a model"
 
   attr :form, :any, required: true
 
@@ -811,6 +839,17 @@ defmodule GingkoWeb.SetupLive do
 
   defp blank_if_nil(nil), do: ""
   defp blank_if_nil(value), do: value
+
+  defp maybe_clear_model(attrs, section, old_provider) do
+    section_attrs = Map.get(attrs, section, %{})
+    new_provider = Map.get(section_attrs, "provider")
+
+    if new_provider != old_provider do
+      Map.put(attrs, section, Map.put(section_attrs, "model", ""))
+    else
+      attrs
+    end
+  end
 
   defp settings_opts do
     Application.get_env(:gingko, :settings_opts, [])

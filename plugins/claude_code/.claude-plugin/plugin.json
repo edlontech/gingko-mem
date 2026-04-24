@@ -7,7 +7,12 @@
   },
   "repository": "https://github.com/edlontech/gingko",
   "license": "MIT",
-  "keywords": ["memory", "mcp", "knowledge-graph", "context", "persistence"],
-  "hooks": "./hooks/hooks.json",
+  "keywords": [
+    "memory",
+    "mcp",
+    "knowledge-graph",
+    "context",
+    "persistence"
+  ],
   "mcpServers": "./.mcp.json"
 }

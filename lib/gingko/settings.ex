@@ -31,7 +31,7 @@ defmodule Gingko.Settings do
     "weak_grounding_penalty" => 0.1
   }
   @default_summaries %{
-    "enabled" => false,
+    "enabled" => true,
     "hot_tags_k" => 15,
     "cluster_regen_memory_threshold" => 10,
     "cluster_regen_idle_seconds" => 1800,

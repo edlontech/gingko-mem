@@ -25,7 +25,7 @@ defmodule Gingko.SettingsTest do
   }
 
   @default_summaries %{
-    enabled: false,
+    enabled: true,
     hot_tags_k: 15,
     cluster_regen_memory_threshold: 10,
     cluster_regen_idle_seconds: 1800,
@@ -776,7 +776,7 @@ defmodule Gingko.SettingsTest do
       )
 
     assert settings.ready?
-    assert settings.summaries.enabled == false
+    assert settings.summaries.enabled == true
     assert settings.summaries.hot_tags_k == 15
     assert settings.summaries.cluster_regen_memory_threshold == 10
     assert settings.summaries.cluster_regen_idle_seconds == 1800

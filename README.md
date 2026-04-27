@@ -1,4 +1,8 @@
-# Gingko
+<p align="center">
+  <img src="logo.png" alt="Gingko" width="256">
+</p>
+
+<h1 align="center">Gingko</h1>
 
 Gingko is a application that exposes a project-scoped memory graph
 over [MCP](https://modelcontextprotocol.io). Any agent that speaks MCP can
@@ -7,7 +11,9 @@ knowledge graph that builds up across sessions.
 
 Under the hood it uses [Mnemosyne](https://github.com/edlontech/mnemosyne) as a memory engine
 
-## Quick start
+## Development Quick start
+
+For development, if you have mise, just run:
 
 ```bash
 mix setup         # fetch deps, install assets

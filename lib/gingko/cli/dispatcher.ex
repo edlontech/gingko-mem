@@ -7,6 +7,7 @@ defmodule Gingko.CLI.Dispatcher do
   supervisor, or halts the VM when a CLI subcommand has been handled.
   """
 
+  alias Gingko.CLI.Hook
   alias Gingko.CLI.Memory
   alias Gingko.CLI.NodeOps
   alias Gingko.CLI.Paths
@@ -63,6 +64,12 @@ defmodule Gingko.CLI.Dispatcher do
   defp dispatch("memory", []), do: Memory.print_help()
   defp dispatch("memory", [cmd | args]), do: System.halt(Memory.run(cmd, args))
 
+  defp dispatch("hook", []), do: print_hook_help()
+  defp dispatch("hook", ["session-start" | _]), do: System.halt(Hook.SessionStart.run())
+  defp dispatch("hook", ["session-stop" | _]), do: System.halt(Hook.SessionStop.run())
+  defp dispatch("hook", ["session-end" | _]), do: System.halt(Hook.SessionEnd.run())
+  defp dispatch("hook", [cmd | _]), do: error("unknown hook subcommand: #{cmd}")
+
   defp dispatch(cmd, _) do
     error("unknown command: #{cmd}")
     print_help()
@@ -96,6 +103,11 @@ defmodule Gingko.CLI.Dispatcher do
     Owl.IO.puts(Owl.Data.tag("Memory (project-scoped):", :bright))
     Owl.IO.puts("  memory <subcommand> See `gingko memory help` for the full list")
     Owl.IO.puts("")
+    Owl.IO.puts(Owl.Data.tag("Claude Code hooks:", :bright))
+    Owl.IO.puts("  hook session-start  Emit SessionStart additionalContext")
+    Owl.IO.puts("  hook session-stop   Summarize transcript tail")
+    Owl.IO.puts("  hook session-end    Commit and clear the active session")
+    Owl.IO.puts("")
     Owl.IO.puts(Owl.Data.tag("Other:", :bright))
     Owl.IO.puts("  maintenance        Burrito payload cache maintenance")
     Owl.IO.puts("  help               Show this help")
@@ -103,6 +115,10 @@ defmodule Gingko.CLI.Dispatcher do
 
   defp print_service_help do
     Owl.IO.puts("Usage: gingko service {install|uninstall|start|stop|status|logs}")
+  end
+
+  defp print_hook_help do
+    Owl.IO.puts("Usage: gingko hook {session-start|session-stop|session-end}")
   end
 
   defp print_version do

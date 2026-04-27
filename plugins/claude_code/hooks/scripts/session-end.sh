@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
+# SessionEnd hook: defers to the `gingko` CLI binary, which commits the
+# active session and clears the on-disk pointer.
+set -eu
 
-GINGKO="${CLAUDE_PLUGIN_ROOT:-}/scripts/gingko.sh"
+export PATH="$HOME/.gingko/bin:$PATH"
 
-# Background the close so the hook exits before the CLI tears down
-"$GINGKO" close-session >/dev/null 2>&1 &
-exit 0
+command -v gingko >/dev/null 2>&1 || exit 0
+
+exec gingko hook session-end

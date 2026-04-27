@@ -7,6 +7,7 @@ defmodule Gingko.CLI.Dispatcher do
   supervisor, or halts the VM when a CLI subcommand has been handled.
   """
 
+  alias Gingko.CLI.Memory
   alias Gingko.CLI.NodeOps
   alias Gingko.CLI.Paths
   alias Gingko.CLI.Remote
@@ -59,6 +60,9 @@ defmodule Gingko.CLI.Dispatcher do
   defp dispatch("service", ["logs" | rest]), do: run_service_logs(rest)
   defp dispatch("service", [cmd | _]), do: error("unknown service subcommand: #{cmd}")
 
+  defp dispatch("memory", []), do: Memory.print_help()
+  defp dispatch("memory", [cmd | args]), do: System.halt(Memory.run(cmd, args))
+
   defp dispatch(cmd, _) do
     error("unknown command: #{cmd}")
     print_help()
@@ -88,6 +92,9 @@ defmodule Gingko.CLI.Dispatcher do
     Owl.IO.puts("  service stop       Stop via service manager")
     Owl.IO.puts("  service status     Show service manager status")
     Owl.IO.puts("  service logs [-f]  Show or tail service logs")
+    Owl.IO.puts("")
+    Owl.IO.puts(Owl.Data.tag("Memory (project-scoped):", :bright))
+    Owl.IO.puts("  memory <subcommand> See `gingko memory help` for the full list")
     Owl.IO.puts("")
     Owl.IO.puts(Owl.Data.tag("Other:", :bright))
     Owl.IO.puts("  maintenance        Burrito payload cache maintenance")

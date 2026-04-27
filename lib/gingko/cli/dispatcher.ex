@@ -60,6 +60,7 @@ defmodule Gingko.CLI.Dispatcher do
   defp dispatch("service", ["start" | _]), do: run_service_start()
   defp dispatch("service", ["stop" | _]), do: run_service_stop()
   defp dispatch("service", ["status" | _]), do: run_service_status()
+  defp dispatch("service", ["installed" | _]), do: run_service_installed()
   defp dispatch("service", ["logs" | rest]), do: run_service_logs(rest)
   defp dispatch("service", [cmd | _]), do: error("unknown service subcommand: #{cmd}")
 
@@ -101,6 +102,7 @@ defmodule Gingko.CLI.Dispatcher do
     Owl.IO.puts("  service start      Start via service manager")
     Owl.IO.puts("  service stop       Stop via service manager")
     Owl.IO.puts("  service status     Show service manager status")
+    Owl.IO.puts("  service installed  Exit 0 if the service unit is installed")
     Owl.IO.puts("  service logs [-f]  Show or tail service logs")
     Owl.IO.puts("")
     Owl.IO.puts(Owl.Data.tag("Memory (project-scoped):", :bright))
@@ -117,7 +119,7 @@ defmodule Gingko.CLI.Dispatcher do
   end
 
   defp print_service_help do
-    Owl.IO.puts("Usage: gingko service {install|uninstall|start|stop|status|logs}")
+    Owl.IO.puts("Usage: gingko service {install|uninstall|start|stop|status|installed|logs}")
   end
 
   defp print_hook_help do
@@ -236,6 +238,14 @@ defmodule Gingko.CLI.Dispatcher do
     case Service.status() do
       {:ok, output} -> IO.write(output)
       {:error, reason} -> error("status failed: #{inspect(reason)}")
+    end
+  end
+
+  defp run_service_installed do
+    if Service.installed?() do
+      :ok
+    else
+      System.halt(1)
     end
   end
 

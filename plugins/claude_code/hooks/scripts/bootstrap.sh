@@ -34,10 +34,22 @@ if curl -sf -m 2 "$URL/health" >/dev/null 2>&1; then
 	exit 0
 fi
 
-if command -v gingko >/dev/null 2>&1; then
-	gingko service install >/dev/null 2>&1 || true
-	gingko service start >/dev/null 2>&1 || true
+if ! command -v gingko >/dev/null 2>&1; then
+	msg="[gingko] CLI not found on PATH; cannot bootstrap service"
+	[ -n "$install_log" ] && msg="$install_log
+$msg"
+	emit_msg "$msg"
 fi
+
+if gingko service installed >/dev/null 2>&1; then
+	msg="[gingko] service is installed but stopped; run 'gingko service start' to restart"
+	[ -n "$install_log" ] && msg="$install_log
+$msg"
+	emit_msg "$msg"
+fi
+
+gingko service install >/dev/null 2>&1 || true
+gingko service start >/dev/null 2>&1 || true
 
 for _ in $(seq 1 20); do
 	if curl -sf -m 1 "$URL/health" >/dev/null 2>&1; then

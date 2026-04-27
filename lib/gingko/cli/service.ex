@@ -34,15 +34,8 @@ defmodule Gingko.CLI.Service do
   def start do
     case Paths.os() do
       :macos ->
-        with {:ok, uid} <- user_id(),
-             {_, 0} <-
-               System.cmd("launchctl", ["kickstart", "gui/#{uid}/#{Paths.service_label()}"],
-                 stderr_to_stdout: true
-               ) do
-          :ok
-        else
-          {output, code} when is_binary(output) -> {:error, {:launchctl, code, output}}
-          error -> error
+        with {:ok, uid} <- user_id() do
+          start_macos(uid)
         end
 
       :linux ->
@@ -60,17 +53,8 @@ defmodule Gingko.CLI.Service do
   def stop do
     case Paths.os() do
       :macos ->
-        with {:ok, uid} <- user_id(),
-             {_, 0} <-
-               System.cmd(
-                 "launchctl",
-                 ["kill", "SIGTERM", "gui/#{uid}/#{Paths.service_label()}"],
-                 stderr_to_stdout: true
-               ) do
-          :ok
-        else
-          {output, code} when is_binary(output) -> {:error, {:launchctl, code, output}}
-          error -> error
+        with {:ok, uid} <- user_id() do
+          stop_macos(uid)
         end
 
       :linux ->
@@ -210,6 +194,27 @@ defmodule Gingko.CLI.Service do
 
   defp bootstrap_launchd(uid, unit_path) do
     case System.cmd("launchctl", ["bootstrap", "gui/#{uid}", unit_path], stderr_to_stdout: true) do
+      {_, 0} -> :ok
+      {output, code} -> {:error, {:launchctl, code, output}}
+    end
+  end
+
+  defp start_macos(uid) do
+    label = Paths.service_label()
+
+    case System.cmd("launchctl", ["kickstart", "gui/#{uid}/#{label}"], stderr_to_stdout: true) do
+      {_, 0} ->
+        :ok
+
+      _ ->
+        bootstrap_launchd(uid, Paths.service_unit_path())
+    end
+  end
+
+  defp stop_macos(uid) do
+    label = Paths.service_label()
+
+    case System.cmd("launchctl", ["bootout", "gui/#{uid}/#{label}"], stderr_to_stdout: true) do
       {_, 0} -> :ok
       {output, code} -> {:error, {:launchctl, code, output}}
     end

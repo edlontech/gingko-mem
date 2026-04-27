@@ -6,12 +6,26 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $CLAUDE_PLUGIN_ROOT/hooks/scripts/bootstrap.sh",
+            "command": "$CLAUDE_PLUGIN_ROOT/hooks/scripts/bootstrap.sh",
+            "shell": "bash",
             "timeout": 300
           },
           {
             "type": "command",
-            "command": "bash $CLAUDE_PLUGIN_ROOT/hooks/scripts/session-start.sh",
+            "command": "$CLAUDE_PLUGIN_ROOT/hooks/scripts/session-start.sh",
+            "shell": "bash",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PLUGIN_ROOT/hooks/scripts/bootstrap.ps1",
+            "shell": "powershell",
+            "timeout": 300
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PLUGIN_ROOT/hooks/scripts/session-start.ps1",
+            "shell": "powershell",
             "timeout": 15
           }
         ]
@@ -23,7 +37,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $CLAUDE_PLUGIN_ROOT/hooks/scripts/session-end.sh",
+            "command": "$CLAUDE_PLUGIN_ROOT/hooks/scripts/session-end.sh",
+            "shell": "bash",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PLUGIN_ROOT/hooks/scripts/session-end.ps1",
+            "shell": "powershell",
             "timeout": 10
           }
         ]
@@ -35,7 +56,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $CLAUDE_PLUGIN_ROOT/hooks/scripts/session-stop.sh",
+            "command": "$CLAUDE_PLUGIN_ROOT/hooks/scripts/session-stop.sh",
+            "shell": "bash",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PLUGIN_ROOT/hooks/scripts/session-stop.ps1",
+            "shell": "powershell",
             "timeout": 30
           }
         ]

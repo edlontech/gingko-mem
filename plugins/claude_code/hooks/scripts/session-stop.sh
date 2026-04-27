@@ -4,6 +4,10 @@
 # bail JSON on stdout.
 set -eu
 
+case "$(uname -s 2>/dev/null)" in
+CYGWIN* | MINGW* | MSYS*) exit 0 ;;
+esac
+
 export PATH="$HOME/.gingko/bin:$PATH"
 
 if ! command -v gingko >/dev/null 2>&1; then

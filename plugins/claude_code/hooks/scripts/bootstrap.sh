@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -eu
 
+# Skip on Windows shells (Git Bash / Cygwin / MSYS) — bootstrap.ps1 runs there.
+case "$(uname -s 2>/dev/null)" in
+CYGWIN* | MINGW* | MSYS*) exit 0 ;;
+esac
+
 # SessionStart bootstrap: ensures the gingko binary is installed and the
 # service is running before the main session-start hook runs. Failures
 # are surfaced to the user via systemMessage but never block the session —

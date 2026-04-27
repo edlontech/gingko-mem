@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -eu
 
-# Skip on Windows shells (Git Bash / Cygwin / MSYS) — bootstrap.ps1 runs there.
-case "$(uname -s 2>/dev/null)" in
-CYGWIN* | MINGW* | MSYS*) exit 0 ;;
-esac
-
 # SessionStart bootstrap: ensures the gingko binary is installed and the
 # service is running before the main session-start hook runs. Failures
 # are surfaced to the user via systemMessage but never block the session —
@@ -14,8 +9,18 @@ esac
 URL="${GINGKO_URL:-http://localhost:8008}"
 export PATH="$HOME/.gingko/bin:$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
 
+json_escape() {
+	local s=$1
+	s=${s//\\/\\\\}
+	s=${s//\"/\\\"}
+	s=${s//$'\n'/\\n}
+	s=${s//$'\r'/\\r}
+	s=${s//$'\t'/\\t}
+	printf '"%s"' "$s"
+}
+
 emit_msg() {
-	jq -n --arg msg "$1" '{systemMessage: $msg}'
+	printf '{"systemMessage":%s}\n' "$(json_escape "$1")"
 	exit 0
 }
 

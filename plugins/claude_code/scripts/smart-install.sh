@@ -7,9 +7,22 @@ set -eu
 
 GINGKO_HOME="${GINGKO_HOME:-$HOME/.gingko}"
 GINGKO_BIN_DIR="$GINGKO_HOME/bin"
-GINGKO_BIN="$GINGKO_BIN_DIR/gingko"
 MARKER="$GINGKO_HOME/.install-version"
 REPO="edlontech/gingko-mem"
+
+OS=$(uname -s)
+ARCH=$(uname -m)
+case "$OS-$ARCH" in
+	Darwin-arm64) TARGET="macos_silicon"; BIN_NAME="gingko" ;;
+	Linux-x86_64) TARGET="linux"; BIN_NAME="gingko" ;;
+	MINGW*-* | MSYS*-* | CYGWIN*-*) TARGET="windows"; BIN_NAME="gingko.exe" ;;
+	*)
+		echo "[gingko] unsupported platform: $OS-$ARCH" >&2
+		exit 1
+		;;
+esac
+
+GINGKO_BIN="$GINGKO_BIN_DIR/$BIN_NAME"
 
 if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
 	echo "[gingko] CLAUDE_PLUGIN_ROOT not set" >&2
@@ -33,18 +46,11 @@ if [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$VERSION" ] && [ -x "$GINGKO_BIN"
 	exit 0
 fi
 
-OS=$(uname -s)
-ARCH=$(uname -m)
-case "$OS-$ARCH" in
-	Darwin-arm64) TARGET="macos_silicon" ;;
-	Linux-x86_64) TARGET="linux" ;;
-	*)
-		echo "[gingko] unsupported platform: $OS-$ARCH" >&2
-		exit 1
-		;;
-esac
-
-ARTIFACT="gingko_${TARGET}"
+if [ "$TARGET" = "windows" ]; then
+	ARTIFACT="gingko_windows.exe"
+else
+	ARTIFACT="gingko_${TARGET}"
+fi
 BASE="https://github.com/${REPO}/releases/download/${TAG}"
 URL="${BASE}/${ARTIFACT}"
 SUM_URL="${BASE}/SHA256SUMS"

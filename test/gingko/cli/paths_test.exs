@@ -34,6 +34,12 @@ defmodule Gingko.CLI.PathsTest do
     end
   end
 
+  describe "manual_stop_marker/0" do
+    test "lives under the gingko home directory" do
+      assert Paths.manual_stop_marker() == Path.join(Paths.gingko_home(), ".service-stopped")
+    end
+  end
+
   describe "linux_systemd_unit_path/1" do
     test "honours XDG_CONFIG_HOME when set" do
       assert Paths.linux_systemd_unit_path("/tmp/xdg-config") ==

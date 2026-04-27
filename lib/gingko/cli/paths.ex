@@ -35,6 +35,9 @@ defmodule Gingko.CLI.Paths do
   @spec cookie_file() :: String.t()
   def cookie_file, do: Path.join(gingko_home(), ".cookie")
 
+  @spec manual_stop_marker() :: String.t()
+  def manual_stop_marker, do: Path.join(gingko_home(), ".service-stopped")
+
   @spec binary_path() :: String.t() | nil
   def binary_path do
     case System.get_env("__BURRITO_BIN_PATH") do

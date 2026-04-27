@@ -7,7 +7,9 @@ set -eu
 # the downstream hook already degrades gracefully when gingko is unreachable.
 
 URL="${GINGKO_URL:-http://localhost:8008}"
-export PATH="$HOME/.gingko/bin:$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
+GINGKO_HOME="${GINGKO_HOME:-$HOME/.gingko}"
+STOPPED_MARKER="$GINGKO_HOME/.service-stopped"
+export PATH="$GINGKO_HOME/bin:$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
 
 json_escape() {
 	local s=$1
@@ -41,8 +43,8 @@ $msg"
 	emit_msg "$msg"
 fi
 
-if gingko service installed >/dev/null 2>&1; then
-	msg="[gingko] service is installed but stopped; run 'gingko service start' to restart"
+if [ -f "$STOPPED_MARKER" ]; then
+	msg="[gingko] service was stopped manually; run 'gingko service start' to restart"
 	[ -n "$install_log" ] && msg="$install_log
 $msg"
 	emit_msg "$msg"

@@ -12,60 +12,76 @@ defmodule Gingko.CLI.Service do
 
   @spec install() :: :ok | {:error, term()}
   def install do
-    case Paths.os() do
-      :macos -> install_macos()
-      :linux -> install_linux()
-      :windows -> install_windows()
-      :unsupported -> {:error, :unsupported_platform}
-    end
+    result =
+      case Paths.os() do
+        :macos -> install_macos()
+        :linux -> install_linux()
+        :windows -> install_windows()
+        :unsupported -> {:error, :unsupported_platform}
+      end
+
+    if result == :ok, do: clear_manual_stop()
+    result
   end
 
   @spec uninstall() :: :ok | {:error, term()}
   def uninstall do
-    case Paths.os() do
-      :macos -> uninstall_macos()
-      :linux -> uninstall_linux()
-      :windows -> uninstall_windows()
-      :unsupported -> {:error, :unsupported_platform}
-    end
+    result =
+      case Paths.os() do
+        :macos -> uninstall_macos()
+        :linux -> uninstall_linux()
+        :windows -> uninstall_windows()
+        :unsupported -> {:error, :unsupported_platform}
+      end
+
+    clear_manual_stop()
+    result
   end
 
   @spec start() :: :ok | {:error, term()}
   def start do
-    case Paths.os() do
-      :macos ->
-        with {:ok, uid} <- user_id() do
-          start_macos(uid)
-        end
+    result =
+      case Paths.os() do
+        :macos ->
+          with {:ok, uid} <- user_id() do
+            start_macos(uid)
+          end
 
-      :linux ->
-        run_systemctl(["start", "gingko.service"])
+        :linux ->
+          run_systemctl(["start", "gingko.service"])
 
-      :windows ->
-        run_schtasks(["/Run", "/TN", Paths.service_label()])
+        :windows ->
+          run_schtasks(["/Run", "/TN", Paths.service_label()])
 
-      :unsupported ->
-        {:error, :unsupported_platform}
-    end
+        :unsupported ->
+          {:error, :unsupported_platform}
+      end
+
+    if result == :ok, do: clear_manual_stop()
+    result
   end
 
   @spec stop() :: :ok | {:error, term()}
   def stop do
-    case Paths.os() do
-      :macos ->
-        with {:ok, uid} <- user_id() do
-          stop_macos(uid)
-        end
+    result =
+      case Paths.os() do
+        :macos ->
+          with {:ok, uid} <- user_id() do
+            stop_macos(uid)
+          end
 
-      :linux ->
-        run_systemctl(["stop", "gingko.service"])
+        :linux ->
+          run_systemctl(["stop", "gingko.service"])
 
-      :windows ->
-        run_schtasks(["/End", "/TN", Paths.service_label()])
+        :windows ->
+          run_schtasks(["/End", "/TN", Paths.service_label()])
 
-      :unsupported ->
-        {:error, :unsupported_platform}
-    end
+        :unsupported ->
+          {:error, :unsupported_platform}
+      end
+
+    if result == :ok, do: mark_manual_stop()
+    result
   end
 
   @spec status() :: {:ok, String.t()} | {:error, term()}
@@ -106,6 +122,26 @@ defmodule Gingko.CLI.Service do
 
   @spec installed?() :: boolean()
   def installed?, do: File.exists?(Paths.service_unit_path())
+
+  @spec manual_stop?() :: boolean()
+  def manual_stop?, do: File.exists?(Paths.manual_stop_marker())
+
+  @spec mark_manual_stop() :: :ok
+  def mark_manual_stop do
+    path = Paths.manual_stop_marker()
+    _ = File.mkdir_p(Path.dirname(path))
+    _ = File.write(path, "")
+    :ok
+  end
+
+  @spec clear_manual_stop() :: :ok
+  def clear_manual_stop do
+    case File.rm(Paths.manual_stop_marker()) do
+      :ok -> :ok
+      {:error, :enoent} -> :ok
+      _ -> :ok
+    end
+  end
 
   defp install_macos do
     with {:ok, binary} <- resolve_binary(),

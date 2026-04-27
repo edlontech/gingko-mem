@@ -4,8 +4,8 @@ defmodule Gingko.CLI.Service do
 
   On macOS this installs a LaunchAgent plist under
   `~/Library/LaunchAgents`. On Linux it installs a systemd user unit
-  under `~/.config/systemd/user`. Both run as the current user with no
-  root required.
+  under `~/.config/systemd/user`. On Windows it registers a per-user
+  Scheduled Task at logon via `schtasks.exe`. None require root.
   """
 
   alias Gingko.CLI.Paths
@@ -15,6 +15,7 @@ defmodule Gingko.CLI.Service do
     case Paths.os() do
       :macos -> install_macos()
       :linux -> install_linux()
+      :windows -> install_windows()
       :unsupported -> {:error, :unsupported_platform}
     end
   end
@@ -24,6 +25,7 @@ defmodule Gingko.CLI.Service do
     case Paths.os() do
       :macos -> uninstall_macos()
       :linux -> uninstall_linux()
+      :windows -> uninstall_windows()
       :unsupported -> {:error, :unsupported_platform}
     end
   end
@@ -45,6 +47,9 @@ defmodule Gingko.CLI.Service do
 
       :linux ->
         run_systemctl(["start", "gingko.service"])
+
+      :windows ->
+        run_schtasks(["/Run", "/TN", Paths.service_label()])
 
       :unsupported ->
         {:error, :unsupported_platform}
@@ -71,6 +76,9 @@ defmodule Gingko.CLI.Service do
       :linux ->
         run_systemctl(["stop", "gingko.service"])
 
+      :windows ->
+        run_schtasks(["/End", "/TN", Paths.service_label()])
+
       :unsupported ->
         {:error, :unsupported_platform}
     end
@@ -92,6 +100,16 @@ defmodule Gingko.CLI.Service do
       :linux ->
         {output, _code} =
           System.cmd("systemctl", ["--user", "status", "gingko.service", "--no-pager"],
+            stderr_to_stdout: true
+          )
+
+        {:ok, output}
+
+      :windows ->
+        {output, _code} =
+          System.cmd(
+            "schtasks.exe",
+            ["/Query", "/TN", Paths.service_label(), "/V", "/FO", "LIST"],
             stderr_to_stdout: true
           )
 
@@ -125,6 +143,17 @@ defmodule Gingko.CLI.Service do
          :ok <- File.write(unit_path, unit),
          :ok <- run_systemctl(["daemon-reload"]) do
       run_systemctl(["enable", "--now", "gingko.service"])
+    end
+  end
+
+  defp install_windows do
+    with {:ok, binary} <- resolve_binary(),
+         :ok <- ensure_log_dir(),
+         xml = render_task_xml(binary),
+         unit_path = Paths.service_unit_path(),
+         :ok <- File.mkdir_p(Path.dirname(unit_path)),
+         :ok <- File.write(unit_path, encode_utf16_le_with_bom(xml)) do
+      run_schtasks(["/Create", "/TN", Paths.service_label(), "/XML", unit_path, "/F"])
     end
   end
 
@@ -168,6 +197,17 @@ defmodule Gingko.CLI.Service do
     end
   end
 
+  defp uninstall_windows do
+    _ = run_schtasks(["/Delete", "/TN", Paths.service_label(), "/F"])
+    unit_path = Paths.service_unit_path()
+
+    case File.rm(unit_path) do
+      :ok -> :ok
+      {:error, :enoent} -> :ok
+      error -> error
+    end
+  end
+
   defp bootstrap_launchd(uid, unit_path) do
     case System.cmd("launchctl", ["bootstrap", "gui/#{uid}", unit_path], stderr_to_stdout: true) do
       {_, 0} -> :ok
@@ -179,6 +219,13 @@ defmodule Gingko.CLI.Service do
     case System.cmd("systemctl", ["--user" | args], stderr_to_stdout: true) do
       {_, 0} -> :ok
       {output, code} -> {:error, {:systemctl, code, output}}
+    end
+  end
+
+  defp run_schtasks(args) do
+    case System.cmd("schtasks.exe", args, stderr_to_stdout: true) do
+      {_, 0} -> :ok
+      {output, code} -> {:error, {:schtasks, code, output}}
     end
   end
 
@@ -205,6 +252,22 @@ defmodule Gingko.CLI.Service do
         gingko_home: Paths.gingko_home()
       ]
     )
+  end
+
+  defp render_task_xml(binary) do
+    template = read_template!("gingko.task.xml.eex")
+
+    EEx.eval_string(template,
+      assigns: [
+        label: Paths.service_label(),
+        binary_path: binary,
+        gingko_home: Paths.gingko_home()
+      ]
+    )
+  end
+
+  defp encode_utf16_le_with_bom(content) do
+    <<0xFF, 0xFE>> <> :unicode.characters_to_binary(content, :utf8, {:utf16, :little})
   end
 
   defp read_template!(name) do

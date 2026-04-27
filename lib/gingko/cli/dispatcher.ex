@@ -250,8 +250,38 @@ defmodule Gingko.CLI.Dispatcher do
         )
         |> wait_port()
 
+      :windows ->
+        run_windows_logs(args)
+
       :unsupported ->
         error("unsupported platform")
+    end
+  end
+
+  defp run_windows_logs(args) do
+    log_path = Paths.stdout_log()
+
+    if "-f" in args do
+      Port.open(
+        {:spawn_executable, System.find_executable("powershell.exe") || "powershell.exe"},
+        [
+          :binary,
+          :exit_status,
+          {:args,
+           [
+             "-NoProfile",
+             "-Command",
+             "Get-Content -Wait -Tail 50 -Path \"#{log_path}\""
+           ]}
+        ]
+      )
+      |> wait_port()
+    else
+      case File.read(log_path) do
+        {:ok, contents} -> IO.write(contents)
+        {:error, :enoent} -> error("no logs at #{log_path}")
+        {:error, reason} -> error("could not read #{log_path}: #{inspect(reason)}")
+      end
     end
   end
 

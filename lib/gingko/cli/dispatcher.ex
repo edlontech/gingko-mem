@@ -62,7 +62,10 @@ defmodule Gingko.CLI.Dispatcher do
   defp dispatch("service", ["status" | _]), do: run_service_status()
   defp dispatch("service", ["installed" | _]), do: run_service_installed()
   defp dispatch("service", ["logs" | rest]), do: run_service_logs(rest)
-  defp dispatch("service", [cmd | _]), do: error("unknown service subcommand: #{cmd}")
+  defp dispatch("service", [cmd | _]) do
+    error("unknown service subcommand: #{cmd}")
+    System.halt(1)
+  end
 
   defp dispatch("memory", []), do: Memory.print_help()
   defp dispatch("memory", [cmd | args]), do: System.halt(Memory.run(cmd, args))
@@ -71,11 +74,15 @@ defmodule Gingko.CLI.Dispatcher do
   defp dispatch("hook", ["session-start" | _]), do: System.halt(Hook.SessionStart.run())
   defp dispatch("hook", ["session-stop" | _]), do: System.halt(Hook.SessionStop.run())
   defp dispatch("hook", ["session-end" | _]), do: System.halt(Hook.SessionEnd.run())
-  defp dispatch("hook", [cmd | _]), do: error("unknown hook subcommand: #{cmd}")
+  defp dispatch("hook", [cmd | _]) do
+    error("unknown hook subcommand: #{cmd}")
+    System.halt(1)
+  end
 
   defp dispatch(cmd, _) do
     error("unknown command: #{cmd}")
     print_help()
+    System.halt(1)
   end
 
   defp print_help do

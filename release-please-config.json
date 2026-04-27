@@ -5,7 +5,14 @@
   "packages": {
     ".": {
       "package-name": "gingko",
-      "changelogpath": "CHANGELOG.md"
+      "changelogpath": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "plugins/claude_code/.claude-plugin/plugin.json",
+          "jsonpath": "$.version"
+        }
+      ]
     }
   }
 }

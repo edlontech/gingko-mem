@@ -11,23 +11,23 @@
 msgid ""
 msgstr ""
 
-#: lib/gingko_web/components/core_components.ex:369
+#: lib/gingko_web/components/core_components.ex:612
 #, elixir-autogen, elixir-format
 msgid "Actions"
 msgstr ""
 
-#: lib/gingko_web/components/layouts.ex:160
-#: lib/gingko_web/components/layouts.ex:172
+#: lib/gingko_web/components/layouts.ex:402
+#: lib/gingko_web/components/layouts.ex:414
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/gingko_web/components/layouts.ex:167
+#: lib/gingko_web/components/layouts.ex:409
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/gingko_web/components/layouts.ex:155
+#: lib/gingko_web/components/layouts.ex:397
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""

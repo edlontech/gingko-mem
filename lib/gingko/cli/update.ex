@@ -33,9 +33,10 @@ defmodule Gingko.CLI.Update do
   def run(args \\ [])
 
   def run(args) when is_list(args) do
-    cond do
-      Keyword.keyword?(args) -> run_with_opts(args)
-      true -> run_with_opts(force: "--force" in args)
+    if Keyword.keyword?(args) do
+      run_with_opts(args)
+    else
+      run_with_opts(force: "--force" in args)
     end
   end
 
@@ -199,8 +200,9 @@ defmodule Gingko.CLI.Update do
   defp swap_binary(current_path, new_path, %{os: :windows}, io) do
     info(io, "Staging new binary at #{current_path}.new (Windows can't replace a running .exe).")
 
-    with :ok <- File.cp(new_path, current_path <> ".new"),
-         _ = File.rm(new_path) do
+    with :ok <- File.cp(new_path, current_path <> ".new") do
+      _ = File.rm(new_path)
+
       info(
         io,
         "Stop the service, run `move /Y \"#{current_path}.new\" \"#{current_path}\"`, then start it again."
@@ -218,8 +220,8 @@ defmodule Gingko.CLI.Update do
       :ok
     else
       {:error, :exdev} ->
-        with :ok <- File.cp(new_path, current_path),
-             _ = File.rm(new_path) do
+        with :ok <- File.cp(new_path, current_path) do
+          _ = File.rm(new_path)
           :ok
         end
 

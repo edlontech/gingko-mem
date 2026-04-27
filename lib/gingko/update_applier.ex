@@ -15,6 +15,8 @@ defmodule Gingko.UpdateApplier do
   alias Gingko.CLI.Paths
   alias Gingko.CLI.Service
 
+  @dialyzer {:nowarn_function, maybe_halt: 1}
+
   @repo "edlontech/gingko-mem"
   @releases_url "https://api.github.com/repos/#{@repo}/releases/latest"
   @download_timeout 120_000

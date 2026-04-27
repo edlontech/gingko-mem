@@ -23,7 +23,7 @@ defmodule Gingko.CLI.Paths do
   @spec os() :: os_atom()
   def os, do: classify_os(:os.type())
 
-  @spec classify_os(:os.os_type()) :: os_atom()
+  @spec classify_os({:unix | :win32, atom()}) :: os_atom()
   def classify_os({:unix, :darwin}), do: :macos
   def classify_os({:unix, :linux}), do: :linux
   def classify_os({:win32, _}), do: :windows

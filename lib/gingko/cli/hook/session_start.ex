@@ -117,7 +117,7 @@ defmodule Gingko.CLI.Hook.SessionStart do
 
     Use `gingko memory append-step '<observation>' '<action>'` to record new memories during this session.
 
-    IMPORTANT: You MUST invoke the `gingko-memory` skill at the start of this session to learn how to properly interact with the Gingko memory system.
+    IMPORTANT: You MUST invoke the `gingko:memory` skill at the start of this session to learn how to properly interact with the Gingko memory system.
     """
   end
 

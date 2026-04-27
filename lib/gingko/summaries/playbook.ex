@@ -30,7 +30,7 @@ defmodule Gingko.Summaries.Playbook do
   5. As you work, append observations and actions via `append_step`. These feed
      back into cluster summaries and the project state on the next regeneration.
 
-  Always invoke the `gingko-memory` skill at session start to confirm tool-calling
+  Always invoke the `gingko:memory` skill at session start to confirm tool-calling
   patterns and record observations as you go.
   """
 

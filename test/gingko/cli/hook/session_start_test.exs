@@ -82,7 +82,7 @@ defmodule Gingko.CLI.Hook.SessionStartTest do
     assert additional =~ "## Previous Gingko Memories"
     assert additional =~ latest
     assert additional =~ "gingko memory append-step"
-    assert additional =~ "gingko-memory"
+    assert additional =~ "gingko:memory"
 
     assert payload["systemMessage"] =~ "Loaded 3 recent memories into session context"
   end

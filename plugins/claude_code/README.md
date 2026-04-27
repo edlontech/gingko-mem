@@ -5,8 +5,8 @@ Graph-based persistent memory for Claude Code via the Gingko MCP server.
 ## Install
 
 ```
-/plugin marketplace add edlontech/gingko
-/plugin install gingko-memory@gingko
+/plugin marketplace add edlontech/edlon-agents-marketplace
+/plugin install gingko@edlon-agents-marketplace
 ```
 
 On the next session start, the plugin will:

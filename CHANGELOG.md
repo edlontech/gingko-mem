@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.1.1](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.0...gingko-v0.1.1) (2026-04-27)
+
+
+### Features
+
+* Adds Claude Code hook subcommands and slim shell wrappers ([dcd4949](https://github.com/edlontech/gingko-mem/commit/dcd4949f46b0a65e5b7ff2d5dbf22dbc7cb7df04))
+* Adds memory functionalities to the CLI ([bf157dc](https://github.com/edlontech/gingko-mem/commit/bf157dcc6fa522e7694a50154166302d09f1804a))
+* Adds Windows platform support to the CLI service layer ([733721f](https://github.com/edlontech/gingko-mem/commit/733721fd0d4a585e2105473f4ed80929d639ac1b))
+* **claude-plugin:** Adds Windows hooks via PowerShell siblings ([00284bd](https://github.com/edlontech/gingko-mem/commit/00284bdaf8d71cb56ff9861a679d18a3a0474695))
+* enable summaries by default ([d204900](https://github.com/edlontech/gingko-mem/commit/d204900d0752ee31a299c3368a9213cf6674e447))
+* Improved Model Search in the setup ([3749f39](https://github.com/edlontech/gingko-mem/commit/3749f39ac2baf6456ace762b86e931b3dd225035))
+* in-app self-update flow with topbar badge ([4f26f08](https://github.com/edlontech/gingko-mem/commit/4f26f08cfbe05b107c2360c2302a771db6020d38))
+
+
+### Bug Fixes
+
+* **claude-plugin:** Fixed the bootstrap script ([5238a95](https://github.com/edlontech/gingko-mem/commit/5238a95f187365b8a005f561c7fb01721127757d))
+* **claude-plugin:** unify hooks under bash, drop powershell siblings ([d432452](https://github.com/edlontech/gingko-mem/commit/d4324527c29e2b3f417f3ba3aafba8b375bb21fc))
+* Disabled Anubis logs ([6974724](https://github.com/edlontech/gingko-mem/commit/69747243ffcb8a6ca69c8255e680c3087181a1ce))
+* Stupid github ([50edc32](https://github.com/edlontech/gingko-mem/commit/50edc32678f1edf5aa99d526777d50cd3af5c2c9))
+
 ## [0.1.0](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.0...gingko-v0.1.0) (2026-04-24)
 
 

@@ -11,7 +11,7 @@ config :gingko,
   generators: [timestamp_type: :utc_datetime],
   ecto_repos: [Gingko.Repo]
 
-config :anubis_mcp, :session_store, enabled: false
+config :anubis_mcp, log: false, session_store: [enabled: false]
 
 # Runtime settings should provide end-user memory configuration.
 # These values are compile/runtime-safe fallbacks until runtime.exs loads.

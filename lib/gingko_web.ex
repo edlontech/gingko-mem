@@ -52,6 +52,8 @@ defmodule GingkoWeb do
     quote do
       use Phoenix.LiveView
 
+      on_mount GingkoWeb.LiveHooks.UpdateStatus
+
       unquote(html_helpers())
     end
   end

@@ -254,7 +254,13 @@ defmodule GingkoWeb.ProjectLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page_title={assigns[:page_title]}>
+    <Layouts.app
+      flash={@flash}
+      page_title={assigns[:page_title]}
+      update_status={@update_status}
+      update_apply={@update_apply}
+      update_supervised={@update_supervised}
+    >
       <section class="mx-auto w-full max-w-[112rem] px-4 py-6 sm:px-6 lg:px-8">
         <.link navigate={~p"/projects"} class="text-xs text-base-content/70 hover:underline">
           ← Projects

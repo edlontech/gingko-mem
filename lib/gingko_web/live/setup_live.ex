@@ -121,7 +121,13 @@ defmodule GingkoWeb.SetupLive do
   @impl true
   def render(%{settings: nil} = assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page_title={assigns[:page_title]}>
+    <Layouts.app
+      flash={@flash}
+      page_title={assigns[:page_title]}
+      update_status={@update_status}
+      update_apply={@update_apply}
+      update_supervised={@update_supervised}
+    >
       <section class="mx-auto max-w-4xl p-6">
         <p>Loading setup...</p>
       </section>
@@ -131,7 +137,13 @@ defmodule GingkoWeb.SetupLive do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} page_title={assigns[:page_title]}>
+    <Layouts.app
+      flash={@flash}
+      page_title={assigns[:page_title]}
+      update_status={@update_status}
+      update_apply={@update_apply}
+      update_supervised={@update_supervised}
+    >
       <section class="mx-auto w-full max-w-4xl p-6">
         <div class="rounded-2xl border border-base-300 bg-base-100 p-6">
           <.header>

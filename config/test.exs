@@ -35,3 +35,5 @@ config :gingko, Gingko.Repo,
   pool_size: 1
 
 config :gingko, Oban, testing: :manual
+
+config :gingko, Gingko.UpdateChecker, enabled: false

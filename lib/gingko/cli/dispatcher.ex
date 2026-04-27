@@ -14,6 +14,7 @@ defmodule Gingko.CLI.Dispatcher do
   alias Gingko.CLI.Remote
   alias Gingko.CLI.Service
   alias Gingko.CLI.Uninstall
+  alias Gingko.CLI.Update
 
   @type result :: :boot | no_return()
 
@@ -51,6 +52,7 @@ defmodule Gingko.CLI.Dispatcher do
   defp dispatch("rpc", [expr | _]), do: run_rpc(expr)
   defp dispatch("install", _), do: run_service_install()
   defp dispatch("uninstall", _), do: Uninstall.run()
+  defp dispatch("update", args), do: run_update(args)
 
   defp dispatch("service", []), do: print_service_help()
   defp dispatch("service", ["install" | _]), do: run_service_install()
@@ -93,6 +95,7 @@ defmodule Gingko.CLI.Dispatcher do
     Owl.IO.puts(Owl.Data.tag("Service (user-level):", :bright))
     Owl.IO.puts("  install            Register to start at login (alias for 'service install')")
     Owl.IO.puts("  uninstall          Full wipe: service + data + cache")
+    Owl.IO.puts("  update [--force]   Download the latest release and swap the binary in place")
     Owl.IO.puts("  service install    Install launchd/systemd unit")
     Owl.IO.puts("  service uninstall  Remove launchd/systemd unit")
     Owl.IO.puts("  service start      Start via service manager")
@@ -170,6 +173,13 @@ defmodule Gingko.CLI.Dispatcher do
       :ok -> :ok
       {:error, :not_running} -> error("not running")
       {:error, :erl_not_found} -> error("could not locate erl in $RELEASE_ROOT/erts-*/bin")
+    end
+  end
+
+  defp run_update(args) do
+    case Update.run(args) do
+      :ok -> :ok
+      {:error, _reason} -> System.halt(1)
     end
   end
 

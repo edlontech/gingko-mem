@@ -42,7 +42,7 @@ defmodule Gingko.Application do
           {Task.Supervisor, name: Gingko.TaskSupervisor},
           Gingko.Memory.SessionSweeper,
           GingkoWeb.Endpoint
-        ]
+        ] ++ update_checker_children()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -99,6 +99,16 @@ defmodule Gingko.Application do
     :ok = restart_mnemosyne_supervisor()
     :ok = sync_bumblebee_serving_child()
     :ok = Gingko.Memory.reopen_registered_projects()
+  end
+
+  defp update_checker_children do
+    opts = Application.get_env(:gingko, Gingko.UpdateChecker, [])
+
+    if Keyword.get(opts, :enabled, true) do
+      [{Gingko.UpdateChecker, Keyword.delete(opts, :enabled)}]
+    else
+      []
+    end
   end
 
   defp embedding_children do

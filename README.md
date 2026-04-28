@@ -20,9 +20,9 @@ mix setup         # fetch deps, install assets
 mix phx.server
 ```
 
-Then point an MCP client at `http://localhost:4000/mcp`. The first time the
+Then point an MCP client at `http://localhost:8008/mcp`. The first time the
 server boots it creates `~/.gingko/` with a default config and guides you
-through setup at `http://localhost:4000/setup` if anything is missing.
+through setup at `http://localhost:8008/setup` if anything is missing.
 
 ## Documentation
 
@@ -48,7 +48,7 @@ Read flow:
 
 - `recall`, `get_node`, `get_session_state`, `list_projects`, `latest_memories`
 
-Summary layer (opt-in via `[summaries].enabled`):
+Summary layer (opt-out via `[summaries].enabled`):
 
 - `get_session_primer`, `get_cluster`, `set_charter`, `refresh_principal_memory`
 
@@ -81,7 +81,7 @@ message if neither is available.
 
 ```bash
 mix setup
-mix phx.server          # http://localhost:4000
+mix phx.server          # http://localhost:8008
 ```
 
 The web UI has three main views:

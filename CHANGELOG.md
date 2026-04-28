@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.2](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.1...gingko-v0.1.2) (2026-04-28)
+
+
+### Features
+
+* Improving our memory skill ([20f6da3](https://github.com/edlontech/gingko-mem/commit/20f6da335950234cbd3f2574146f8eb8b4fe1c22))
+
+
+### Bug Fixes
+
+* Fixed bootstrap to not restart if the user stops manually ([5e2c25e](https://github.com/edlontech/gingko-mem/commit/5e2c25e635a3c9ca0a8e1d67d66e6e706cb77bc5))
+* sync plugin.json version with mix.exs and halt non-zero on unknown CLI commands ([69f5b8c](https://github.com/edlontech/gingko-mem/commit/69f5b8c93ec06c6dd079e3de74d4b29bbe309ca5))
+* use manual-stop marker so bootstrap restarts after reboots and crashes ([a407604](https://github.com/edlontech/gingko-mem/commit/a40760495135158f833a04551c86894f2ffc5ee0))
+
 ## [0.1.1](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.0...gingko-v0.1.1) (2026-04-27)
 
 

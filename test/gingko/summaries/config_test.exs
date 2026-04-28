@@ -54,7 +54,11 @@ defmodule Gingko.Summaries.ConfigTest do
              cluster_regen_memory_threshold: 10,
              cluster_regen_idle_seconds: 1800,
              principal_regen_debounce_seconds: 60,
-             session_primer_recent_count: 15
+             session_primer_recent_count: 15,
+             chunk_chars: 512_000,
+             max_chunks: 8,
+             parallelism: 4,
+             chunk_timeout_ms: 60_000
            }
   end
 

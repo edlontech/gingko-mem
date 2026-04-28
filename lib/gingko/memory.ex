@@ -483,6 +483,16 @@ defmodule Gingko.Memory do
     with {:ok, %{observation: observation, action: action}} <-
            Gingko.Memory.Summarizer.extract(content) do
       append_step(%{session_id: session_id, observation: observation, action: action})
+    else
+      {:error, :empty_content} ->
+        {:error, %{code: :invalid_params, message: "content cannot be empty"}}
+
+      {:error, %{code: _} = error} ->
+        {:error, error}
+
+      {:error, reason} ->
+        Logger.warning("summarize_step failed for session_id=#{session_id}: #{inspect(reason)}")
+        {:error, %{code: :summarization_failed, message: inspect(reason)}}
     end
   end
 

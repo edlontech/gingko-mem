@@ -36,7 +36,11 @@ defmodule Gingko.Settings do
     "cluster_regen_memory_threshold" => 10,
     "cluster_regen_idle_seconds" => 1800,
     "principal_regen_debounce_seconds" => 60,
-    "session_primer_recent_count" => 15
+    "session_primer_recent_count" => 15,
+    "chunk_chars" => 512_000,
+    "max_chunks" => 8,
+    "parallelism" => 4,
+    "chunk_timeout_ms" => 60_000
   }
   @pipeline_steps ~w(
     structuring extract retrieval summarize merge_intent
@@ -167,7 +171,11 @@ defmodule Gingko.Settings do
             cluster_regen_memory_threshold: pos_integer(),
             cluster_regen_idle_seconds: pos_integer(),
             principal_regen_debounce_seconds: pos_integer(),
-            session_primer_recent_count: pos_integer()
+            session_primer_recent_count: pos_integer(),
+            chunk_chars: pos_integer(),
+            max_chunks: pos_integer(),
+            parallelism: pos_integer(),
+            chunk_timeout_ms: pos_integer()
           },
           overrides: %{
             optional(String.t()) => %{
@@ -324,7 +332,11 @@ defmodule Gingko.Settings do
       cluster_regen_memory_threshold: summaries.cluster_regen_memory_threshold,
       cluster_regen_idle_seconds: summaries.cluster_regen_idle_seconds,
       principal_regen_debounce_seconds: summaries.principal_regen_debounce_seconds,
-      session_primer_recent_count: summaries.session_primer_recent_count
+      session_primer_recent_count: summaries.session_primer_recent_count,
+      chunk_chars: summaries.chunk_chars,
+      max_chunks: summaries.max_chunks,
+      parallelism: summaries.parallelism,
+      chunk_timeout_ms: summaries.chunk_timeout_ms
     ]
   end
 
@@ -697,6 +709,42 @@ defmodule Gingko.Settings do
               @default_summaries["session_primer_recent_count"]
             ),
             @default_summaries["session_primer_recent_count"]
+          ),
+        chunk_chars:
+          normalize_positive_integer(
+            pick_raw(
+              source,
+              ["summaries", :summaries, "chunk_chars", :chunk_chars],
+              @default_summaries["chunk_chars"]
+            ),
+            @default_summaries["chunk_chars"]
+          ),
+        max_chunks:
+          normalize_positive_integer(
+            pick_raw(
+              source,
+              ["summaries", :summaries, "max_chunks", :max_chunks],
+              @default_summaries["max_chunks"]
+            ),
+            @default_summaries["max_chunks"]
+          ),
+        parallelism:
+          normalize_positive_integer(
+            pick_raw(
+              source,
+              ["summaries", :summaries, "parallelism", :parallelism],
+              @default_summaries["parallelism"]
+            ),
+            @default_summaries["parallelism"]
+          ),
+        chunk_timeout_ms:
+          normalize_positive_integer(
+            pick_raw(
+              source,
+              ["summaries", :summaries, "chunk_timeout_ms", :chunk_timeout_ms],
+              @default_summaries["chunk_timeout_ms"]
+            ),
+            @default_summaries["chunk_timeout_ms"]
           )
       },
       overrides: parse_overrides(source),
@@ -1051,7 +1099,11 @@ defmodule Gingko.Settings do
         "cluster_regen_memory_threshold" => parsed.summaries.cluster_regen_memory_threshold,
         "cluster_regen_idle_seconds" => parsed.summaries.cluster_regen_idle_seconds,
         "principal_regen_debounce_seconds" => parsed.summaries.principal_regen_debounce_seconds,
-        "session_primer_recent_count" => parsed.summaries.session_primer_recent_count
+        "session_primer_recent_count" => parsed.summaries.session_primer_recent_count,
+        "chunk_chars" => parsed.summaries.chunk_chars,
+        "max_chunks" => parsed.summaries.max_chunks,
+        "parallelism" => parsed.summaries.parallelism,
+        "chunk_timeout_ms" => parsed.summaries.chunk_timeout_ms
       },
       "overrides" => overrides_to_toml(parsed.overrides),
       "value_function" => %{"params" => value_function_to_toml(parsed.value_function)}

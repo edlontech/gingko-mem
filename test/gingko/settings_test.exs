@@ -30,7 +30,11 @@ defmodule Gingko.SettingsTest do
     cluster_regen_memory_threshold: 10,
     cluster_regen_idle_seconds: 1800,
     principal_regen_debounce_seconds: 60,
-    session_primer_recent_count: 15
+    session_primer_recent_count: 15,
+    chunk_chars: 512_000,
+    max_chunks: 8,
+    parallelism: 4,
+    chunk_timeout_ms: 60_000
   }
 
   test "home/1 falls back to ~/.gingko when GINGKO_HOME is not set" do
@@ -849,7 +853,11 @@ defmodule Gingko.SettingsTest do
         cluster_regen_memory_threshold: 5,
         cluster_regen_idle_seconds: 600,
         principal_regen_debounce_seconds: 90,
-        session_primer_recent_count: 8
+        session_primer_recent_count: 8,
+        chunk_chars: 200_000,
+        max_chunks: 4,
+        parallelism: 2,
+        chunk_timeout_ms: 45_000
       },
       overrides: %{},
       value_function: %{},
@@ -865,6 +873,10 @@ defmodule Gingko.SettingsTest do
     assert env[:cluster_regen_idle_seconds] == 600
     assert env[:principal_regen_debounce_seconds] == 90
     assert env[:session_primer_recent_count] == 8
+    assert env[:chunk_chars] == 200_000
+    assert env[:max_chunks] == 4
+    assert env[:parallelism] == 2
+    assert env[:chunk_timeout_ms] == 45_000
   end
 
   @tag :tmp_dir

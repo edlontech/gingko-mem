@@ -249,7 +249,7 @@ defmodule GingkoWeb.SetupLiveTest do
 
   describe "[summaries] section" do
     @tag :tmp_dir
-    test "renders the Memory Summaries section with six fields and defaults", %{
+    test "renders the Memory Summaries section with all fields and defaults", %{
       conn: conn,
       tmp_dir: tmp_dir
     } do
@@ -276,10 +276,15 @@ defmodule GingkoWeb.SetupLiveTest do
       assert html =~ "Cluster regen idle seconds"
       assert html =~ "Principal regen debounce seconds"
       assert html =~ "Session primer recent count"
+      assert html =~ "Step summarization"
+      assert html =~ "Chunk size (chars)"
+      assert html =~ "Max chunks"
+      assert html =~ "Parallelism"
+      assert html =~ "Per-chunk timeout (ms)"
     end
 
     @tag :tmp_dir
-    test "saving the six summaries fields round-trips through config.toml and Settings.load/1",
+    test "saving the summaries fields round-trips through config.toml and Settings.load/1",
          %{conn: conn, tmp_dir: tmp_dir} do
       Application.put_env(
         :gingko,
@@ -321,7 +326,11 @@ defmodule GingkoWeb.SetupLiveTest do
             "cluster_regen_memory_threshold" => "7",
             "cluster_regen_idle_seconds" => "900",
             "principal_regen_debounce_seconds" => "45",
-            "session_primer_recent_count" => "11"
+            "session_primer_recent_count" => "11",
+            "chunk_chars" => "200000",
+            "max_chunks" => "4",
+            "parallelism" => "2",
+            "chunk_timeout_ms" => "45000"
           }
         }
       }
@@ -340,6 +349,10 @@ defmodule GingkoWeb.SetupLiveTest do
       assert settings.summaries.cluster_regen_idle_seconds == 900
       assert settings.summaries.principal_regen_debounce_seconds == 45
       assert settings.summaries.session_primer_recent_count == 11
+      assert settings.summaries.chunk_chars == 200_000
+      assert settings.summaries.max_chunks == 4
+      assert settings.summaries.parallelism == 2
+      assert settings.summaries.chunk_timeout_ms == 45_000
     end
   end
 

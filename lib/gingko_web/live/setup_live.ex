@@ -647,6 +647,62 @@ defmodule GingkoWeb.SetupLive do
               </p>
             </div>
           </div>
+
+          <div class="pt-4 border-t border-base-300">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-base-content/70 mb-3">
+              Step summarization (map-reduce)
+            </h3>
+
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <.input
+                  field={summaries_form[:chunk_chars]}
+                  type="number"
+                  label="Chunk size (chars)"
+                  min="1"
+                />
+                <p class="mt-1 text-xs text-base-content/60">
+                  Soft cap per chunk before triggering map-reduce. Default 512000 (~128k tokens).
+                </p>
+              </div>
+              <div>
+                <.input
+                  field={summaries_form[:max_chunks]}
+                  type="number"
+                  label="Max chunks"
+                  min="1"
+                />
+                <p class="mt-1 text-xs text-base-content/60">
+                  Hard cap on chunks per summarization to bound LLM cost. Default 8.
+                </p>
+              </div>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2 mt-4">
+              <div>
+                <.input
+                  field={summaries_form[:parallelism]}
+                  type="number"
+                  label="Parallelism"
+                  min="1"
+                />
+                <p class="mt-1 text-xs text-base-content/60">
+                  Concurrent per-chunk LLM calls. Default 4.
+                </p>
+              </div>
+              <div>
+                <.input
+                  field={summaries_form[:chunk_timeout_ms]}
+                  type="number"
+                  label="Per-chunk timeout (ms)"
+                  min="1"
+                />
+                <p class="mt-1 text-xs text-base-content/60">
+                  Timeout for each chunk's LLM call. Default 60000.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </.inputs_for>
     </section>
@@ -816,7 +872,11 @@ defmodule GingkoWeb.SetupLive do
         "cluster_regen_memory_threshold" => settings.summaries.cluster_regen_memory_threshold,
         "cluster_regen_idle_seconds" => settings.summaries.cluster_regen_idle_seconds,
         "principal_regen_debounce_seconds" => settings.summaries.principal_regen_debounce_seconds,
-        "session_primer_recent_count" => settings.summaries.session_primer_recent_count
+        "session_primer_recent_count" => settings.summaries.session_primer_recent_count,
+        "chunk_chars" => settings.summaries.chunk_chars,
+        "max_chunks" => settings.summaries.max_chunks,
+        "parallelism" => settings.summaries.parallelism,
+        "chunk_timeout_ms" => settings.summaries.chunk_timeout_ms
       },
       "overrides" => overrides_attrs(settings),
       "value_function" => value_function_attrs(settings)

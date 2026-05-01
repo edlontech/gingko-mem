@@ -26,10 +26,8 @@ defmodule Gingko.SettingsTest do
 
   @default_summaries %{
     enabled: true,
-    hot_tags_k: 15,
-    cluster_regen_memory_threshold: 10,
-    cluster_regen_idle_seconds: 1800,
-    principal_regen_debounce_seconds: 60,
+    regen_debounce_seconds: 60,
+    summary_memory_count: 200,
     session_primer_recent_count: 15,
     chunk_chars: 512_000,
     max_chunks: 8,
@@ -732,10 +730,8 @@ defmodule Gingko.SettingsTest do
 
       [summaries]
       enabled = true
-      hot_tags_k = 20
-      cluster_regen_memory_threshold = 5
-      cluster_regen_idle_seconds = 600
-      principal_regen_debounce_seconds = 90
+      regen_debounce_seconds = 90
+      summary_memory_count = 150
       session_primer_recent_count = 8
       """
     )
@@ -749,10 +745,8 @@ defmodule Gingko.SettingsTest do
 
     assert settings.ready?
     assert settings.summaries.enabled == true
-    assert settings.summaries.hot_tags_k == 20
-    assert settings.summaries.cluster_regen_memory_threshold == 5
-    assert settings.summaries.cluster_regen_idle_seconds == 600
-    assert settings.summaries.principal_regen_debounce_seconds == 90
+    assert settings.summaries.regen_debounce_seconds == 90
+    assert settings.summaries.summary_memory_count == 150
     assert settings.summaries.session_primer_recent_count == 8
   end
 
@@ -781,10 +775,8 @@ defmodule Gingko.SettingsTest do
 
     assert settings.ready?
     assert settings.summaries.enabled == true
-    assert settings.summaries.hot_tags_k == 15
-    assert settings.summaries.cluster_regen_memory_threshold == 10
-    assert settings.summaries.cluster_regen_idle_seconds == 1800
-    assert settings.summaries.principal_regen_debounce_seconds == 60
+    assert settings.summaries.regen_debounce_seconds == 60
+    assert settings.summaries.summary_memory_count == 200
     assert settings.summaries.session_primer_recent_count == 15
   end
 
@@ -812,7 +804,7 @@ defmodule Gingko.SettingsTest do
 
       [summaries]
       enabled = true
-      hot_tags_k = 42
+      summary_memory_count = 42
       """
     )
 
@@ -849,10 +841,8 @@ defmodule Gingko.SettingsTest do
       episodic_validation: @default_episodic_validation,
       summaries: %{
         enabled: true,
-        hot_tags_k: 20,
-        cluster_regen_memory_threshold: 5,
-        cluster_regen_idle_seconds: 600,
-        principal_regen_debounce_seconds: 90,
+        regen_debounce_seconds: 90,
+        summary_memory_count: 150,
         session_primer_recent_count: 8,
         chunk_chars: 200_000,
         max_chunks: 4,
@@ -868,10 +858,8 @@ defmodule Gingko.SettingsTest do
     env = Settings.summaries_env(settings)
 
     assert env[:enabled] == true
-    assert env[:hot_tags_k] == 20
-    assert env[:cluster_regen_memory_threshold] == 5
-    assert env[:cluster_regen_idle_seconds] == 600
-    assert env[:principal_regen_debounce_seconds] == 90
+    assert env[:regen_debounce_seconds] == 90
+    assert env[:summary_memory_count] == 150
     assert env[:session_primer_recent_count] == 8
     assert env[:chunk_chars] == 200_000
     assert env[:max_chunks] == 4

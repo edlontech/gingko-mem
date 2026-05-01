@@ -6,10 +6,8 @@ defmodule Gingko.Summaries.Config do
 
   @defaults %{
     enabled: false,
-    hot_tags_k: 15,
-    cluster_regen_memory_threshold: 10,
-    cluster_regen_idle_seconds: 1800,
-    principal_regen_debounce_seconds: 60,
+    regen_debounce_seconds: 60,
+    summary_memory_count: 200,
     session_primer_recent_count: 15,
     chunk_chars: 512_000,
     max_chunks: 8,
@@ -21,10 +19,8 @@ defmodule Gingko.Summaries.Config do
   def defaults, do: @defaults
 
   def enabled?, do: fetch(:enabled)
-  def hot_tags_k, do: fetch(:hot_tags_k)
-  def cluster_regen_memory_threshold, do: fetch(:cluster_regen_memory_threshold)
-  def cluster_regen_idle_seconds, do: fetch(:cluster_regen_idle_seconds)
-  def principal_regen_debounce_seconds, do: fetch(:principal_regen_debounce_seconds)
+  def regen_debounce_seconds, do: fetch(:regen_debounce_seconds)
+  def summary_memory_count, do: fetch(:summary_memory_count)
   def session_primer_recent_count, do: fetch(:session_primer_recent_count)
   def chunk_chars, do: fetch(:chunk_chars)
   def max_chunks, do: fetch(:max_chunks)

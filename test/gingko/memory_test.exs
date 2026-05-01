@@ -224,7 +224,7 @@ defmodule Gingko.MemoryTest do
 
     setup do
       original = Application.get_env(:gingko, Gingko.Summaries.Config)
-      Application.put_env(:gingko, Gingko.Summaries.Config, enabled: true, hot_tags_k: 15)
+      Application.put_env(:gingko, Gingko.Summaries.Config, enabled: true)
 
       on_exit(fn ->
         if original do
@@ -541,64 +541,6 @@ defmodule Gingko.MemoryTest do
       assert {:ok, %{node: nil, metadata: nil, linked_nodes: []}} =
                Gingko.Memory.get_node(%{project_id: project_id, node_id: "unknown"})
     end
-
-    test "top_tags returns top-k tags sorted by membership count desc", %{
-      project_id: project_id,
-      repo_id: repo_id
-    } do
-      tag_auth = %Tag{
-        id: "tag-auth",
-        label: "Auth",
-        links: %{membership: MapSet.new(~w(m1 m2 m3 m4 m5))}
-      }
-
-      tag_graph = %Tag{
-        id: "tag-graph",
-        label: "Graph",
-        links: %{membership: MapSet.new(~w(m6 m7))}
-      }
-
-      tag_ui = %Tag{
-        id: "tag-ui",
-        label: "UI",
-        links: %{membership: MapSet.new(~w(m8 m9 m10))}
-      }
-
-      semantic = %Semantic{id: "s1", proposition: "unrelated", confidence: 0.8}
-
-      graph =
-        Mnemosyne.Graph.new()
-        |> Mnemosyne.Graph.put_node(tag_auth)
-        |> Mnemosyne.Graph.put_node(tag_graph)
-        |> Mnemosyne.Graph.put_node(tag_ui)
-        |> Mnemosyne.Graph.put_node(semantic)
-
-      stub(Mnemosyne, :get_graph, fn ^repo_id -> graph end)
-
-      assert {:ok, [first, second]} = Gingko.Memory.top_tags(project_id, 2)
-
-      assert first.id == "tag-auth"
-      assert first.label == "Auth"
-      assert first.memory_count == 5
-
-      assert second.id == "tag-ui"
-      assert second.label == "UI"
-      assert second.memory_count == 3
-    end
-
-    test "top_tags returns an empty list when the graph has no tag nodes", %{
-      project_id: project_id,
-      repo_id: repo_id
-    } do
-      stub(Mnemosyne, :get_graph, fn ^repo_id -> Mnemosyne.Graph.new() end)
-
-      assert {:ok, []} = Gingko.Memory.top_tags(project_id, 5)
-    end
-
-    test "top_tags returns {:error, _} when the project repo is not open" do
-      assert {:error, %{code: :project_not_open}} =
-               Gingko.Memory.top_tags("missing-project", 5)
-    end
   end
 
   describe "project_monitor_snapshot/1 degraded path" do
@@ -795,50 +737,5 @@ defmodule Gingko.MemoryTest do
   defp close_project_if_open(project_id) do
     repo_id = Gingko.Memory.ProjectRegistry.resolve(project_id).repo_id
     if repo_id in Mnemosyne.list_repos(), do: :ok = Mnemosyne.close_repo(repo_id)
-  end
-
-  describe "open_project seeds the playbook based on Summaries.Config.enabled?" do
-    setup do
-      original = Application.get_env(:gingko, Gingko.Summaries.Config)
-
-      on_exit(fn ->
-        if original do
-          Application.put_env(:gingko, Gingko.Summaries.Config, original)
-        else
-          Application.delete_env(:gingko, Gingko.Summaries.Config)
-        end
-      end)
-
-      :ok
-    end
-
-    test "does not create a playbook row when summaries are disabled" do
-      Application.put_env(:gingko, Gingko.Summaries.Config, enabled: false)
-
-      project_id = "seed-disabled-" <> Integer.to_string(System.unique_integer([:positive]))
-      on_exit(fn -> close_project_if_open(project_id) end)
-
-      Gingko.Repo.delete_all(Gingko.Summaries.PrincipalMemorySection)
-
-      assert {:ok, _} = Gingko.Memory.open_project(project_id)
-
-      refute Gingko.Summaries.get_section(project_id, "playbook")
-    end
-
-    test "creates a playbook row with Playbook.markdown/0 content when summaries are enabled" do
-      Application.put_env(:gingko, Gingko.Summaries.Config, enabled: true)
-
-      project_id = "seed-enabled-" <> Integer.to_string(System.unique_integer([:positive]))
-      on_exit(fn -> close_project_if_open(project_id) end)
-
-      Gingko.Repo.delete_all(Gingko.Summaries.PrincipalMemorySection)
-
-      assert {:ok, _} = Gingko.Memory.open_project(project_id)
-
-      section = Gingko.Summaries.get_section(project_id, "playbook")
-      assert %Gingko.Summaries.PrincipalMemorySection{} = section
-      assert section.kind == "playbook"
-      assert section.content == Gingko.Summaries.Playbook.markdown()
-    end
   end
 end

@@ -32,10 +32,8 @@ defmodule Gingko.Settings do
   }
   @default_summaries %{
     "enabled" => true,
-    "hot_tags_k" => 15,
-    "cluster_regen_memory_threshold" => 10,
-    "cluster_regen_idle_seconds" => 1800,
-    "principal_regen_debounce_seconds" => 60,
+    "regen_debounce_seconds" => 60,
+    "summary_memory_count" => 200,
     "session_primer_recent_count" => 15,
     "chunk_chars" => 512_000,
     "max_chunks" => 8,
@@ -167,10 +165,8 @@ defmodule Gingko.Settings do
           },
           summaries: %{
             enabled: boolean(),
-            hot_tags_k: pos_integer(),
-            cluster_regen_memory_threshold: pos_integer(),
-            cluster_regen_idle_seconds: pos_integer(),
-            principal_regen_debounce_seconds: pos_integer(),
+            regen_debounce_seconds: pos_integer(),
+            summary_memory_count: pos_integer(),
             session_primer_recent_count: pos_integer(),
             chunk_chars: pos_integer(),
             max_chunks: pos_integer(),
@@ -328,10 +324,8 @@ defmodule Gingko.Settings do
   def summaries_env(%__MODULE__{summaries: summaries}) do
     [
       enabled: summaries.enabled,
-      hot_tags_k: summaries.hot_tags_k,
-      cluster_regen_memory_threshold: summaries.cluster_regen_memory_threshold,
-      cluster_regen_idle_seconds: summaries.cluster_regen_idle_seconds,
-      principal_regen_debounce_seconds: summaries.principal_regen_debounce_seconds,
+      regen_debounce_seconds: summaries.regen_debounce_seconds,
+      summary_memory_count: summaries.summary_memory_count,
       session_primer_recent_count: summaries.session_primer_recent_count,
       chunk_chars: summaries.chunk_chars,
       max_chunks: summaries.max_chunks,
@@ -645,56 +639,28 @@ defmodule Gingko.Settings do
               @default_summaries["enabled"]
             )
           ),
-        hot_tags_k:
-          normalize_positive_integer(
-            pick_raw(
-              source,
-              ["summaries", :summaries, "hot_tags_k", :hot_tags_k],
-              @default_summaries["hot_tags_k"]
-            ),
-            @default_summaries["hot_tags_k"]
-          ),
-        cluster_regen_memory_threshold:
+        regen_debounce_seconds:
           normalize_positive_integer(
             pick_raw(
               source,
               [
                 "summaries",
                 :summaries,
-                "cluster_regen_memory_threshold",
-                :cluster_regen_memory_threshold
+                "regen_debounce_seconds",
+                :regen_debounce_seconds
               ],
-              @default_summaries["cluster_regen_memory_threshold"]
+              @default_summaries["regen_debounce_seconds"]
             ),
-            @default_summaries["cluster_regen_memory_threshold"]
+            @default_summaries["regen_debounce_seconds"]
           ),
-        cluster_regen_idle_seconds:
+        summary_memory_count:
           normalize_positive_integer(
             pick_raw(
               source,
-              [
-                "summaries",
-                :summaries,
-                "cluster_regen_idle_seconds",
-                :cluster_regen_idle_seconds
-              ],
-              @default_summaries["cluster_regen_idle_seconds"]
+              ["summaries", :summaries, "summary_memory_count", :summary_memory_count],
+              @default_summaries["summary_memory_count"]
             ),
-            @default_summaries["cluster_regen_idle_seconds"]
-          ),
-        principal_regen_debounce_seconds:
-          normalize_positive_integer(
-            pick_raw(
-              source,
-              [
-                "summaries",
-                :summaries,
-                "principal_regen_debounce_seconds",
-                :principal_regen_debounce_seconds
-              ],
-              @default_summaries["principal_regen_debounce_seconds"]
-            ),
-            @default_summaries["principal_regen_debounce_seconds"]
+            @default_summaries["summary_memory_count"]
           ),
         session_primer_recent_count:
           normalize_positive_integer(
@@ -1095,10 +1061,8 @@ defmodule Gingko.Settings do
       },
       "summaries" => %{
         "enabled" => parsed.summaries.enabled,
-        "hot_tags_k" => parsed.summaries.hot_tags_k,
-        "cluster_regen_memory_threshold" => parsed.summaries.cluster_regen_memory_threshold,
-        "cluster_regen_idle_seconds" => parsed.summaries.cluster_regen_idle_seconds,
-        "principal_regen_debounce_seconds" => parsed.summaries.principal_regen_debounce_seconds,
+        "regen_debounce_seconds" => parsed.summaries.regen_debounce_seconds,
+        "summary_memory_count" => parsed.summaries.summary_memory_count,
         "session_primer_recent_count" => parsed.summaries.session_primer_recent_count,
         "chunk_chars" => parsed.summaries.chunk_chars,
         "max_chunks" => parsed.summaries.max_chunks,

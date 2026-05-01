@@ -587,52 +587,27 @@ defmodule GingkoWeb.SetupLive do
             />
             <div>
               <.input
-                field={summaries_form[:hot_tags_k]}
+                field={summaries_form[:regen_debounce_seconds]}
                 type="number"
-                label="Hot tags K"
-                min="1"
-              />
-              <p class="mt-1 text-xs text-base-content/60">
-                Leave blank or invalid to use default (15).
-              </p>
-            </div>
-          </div>
-
-          <div class="grid gap-4 md:grid-cols-2">
-            <div>
-              <.input
-                field={summaries_form[:cluster_regen_memory_threshold]}
-                type="number"
-                label="Cluster regen memory threshold"
-                min="1"
-              />
-              <p class="mt-1 text-xs text-base-content/60">
-                Leave blank or invalid to use default (10).
-              </p>
-            </div>
-            <div>
-              <.input
-                field={summaries_form[:cluster_regen_idle_seconds]}
-                type="number"
-                label="Cluster regen idle seconds"
-                min="1"
-              />
-              <p class="mt-1 text-xs text-base-content/60">
-                Leave blank or invalid to use default (1800).
-              </p>
-            </div>
-          </div>
-
-          <div class="grid gap-4 md:grid-cols-2">
-            <div>
-              <.input
-                field={summaries_form[:principal_regen_debounce_seconds]}
-                type="number"
-                label="Principal regen debounce seconds"
+                label="Regen debounce seconds"
                 min="1"
               />
               <p class="mt-1 text-xs text-base-content/60">
                 Leave blank or invalid to use default (60).
+              </p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <.input
+                field={summaries_form[:summary_memory_count]}
+                type="number"
+                label="Summary memory count"
+                min="1"
+              />
+              <p class="mt-1 text-xs text-base-content/60">
+                Number of recent memories fed into each summary regeneration. Default 200.
               </p>
             </div>
             <div>
@@ -868,10 +843,8 @@ defmodule GingkoWeb.SetupLive do
       },
       "summaries" => %{
         "enabled" => settings.summaries.enabled,
-        "hot_tags_k" => settings.summaries.hot_tags_k,
-        "cluster_regen_memory_threshold" => settings.summaries.cluster_regen_memory_threshold,
-        "cluster_regen_idle_seconds" => settings.summaries.cluster_regen_idle_seconds,
-        "principal_regen_debounce_seconds" => settings.summaries.principal_regen_debounce_seconds,
+        "regen_debounce_seconds" => settings.summaries.regen_debounce_seconds,
+        "summary_memory_count" => settings.summaries.summary_memory_count,
         "session_primer_recent_count" => settings.summaries.session_primer_recent_count,
         "chunk_chars" => settings.summaries.chunk_chars,
         "max_chunks" => settings.summaries.max_chunks,

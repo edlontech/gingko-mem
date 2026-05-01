@@ -905,20 +905,20 @@ defmodule GingkoWeb.ProjectLiveTest do
   end
 
   describe "summaries tab" do
-    test "Regenerate click in the State panel surfaces a flash on the parent LiveView", %{
+    test "Regenerate click in the Summary panel surfaces a flash on the parent LiveView", %{
       conn: conn,
       project_id: project_id
     } do
       {:ok, view, _html} = live conn, ~p"/projects/#{project_id}/summaries"
 
       view
-      |> element(~s|button[phx-value-scope="state"]|)
+      |> element(~s|button[phx-click="refresh_summary"]|)
       |> render_click()
 
       _ = :sys.get_state(view.pid)
 
       assert Phoenix.Flash.get(state_assigns(view).flash, :info) ==
-               "Principal state regeneration enqueued."
+               "Summary regeneration enqueued."
     end
   end
 

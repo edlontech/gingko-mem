@@ -213,15 +213,11 @@ defmodule Gingko.Memory do
          memory <- root_memory_descriptor(project_id) do
       ensure_memory_storage_root!(memory)
 
-      result =
-        if memory.repo_id in Mnemosyne.list_repos() do
-          {:ok, project_result(memory, true)}
-        else
-          open_repo_for_memory(project_id, memory)
-        end
-
-      maybe_seed_playbook(project_id, result)
-      result
+      if memory.repo_id in Mnemosyne.list_repos() do
+        {:ok, project_result(memory, true)}
+      else
+        open_repo_for_memory(project_id, memory)
+      end
     else
       {:error, %Ecto.Changeset{} = changeset} ->
         {:error, %{code: :project_registration_failed, message: inspect(changeset.errors)}}
@@ -298,22 +294,6 @@ defmodule Gingko.Memory do
       %Config{} = config -> config
     end
   end
-
-  defp maybe_seed_playbook(project_id, {:ok, _}) do
-    if Gingko.Summaries.Config.enabled?() do
-      case Gingko.Summaries.seed_playbook(project_id) do
-        {:ok, _} ->
-          :ok
-
-        {:error, %Ecto.Changeset{} = changeset} ->
-          Logger.warning("playbook seed failed for #{project_id}: #{inspect(changeset.errors)}")
-      end
-    end
-
-    :ok
-  end
-
-  defp maybe_seed_playbook(_project_id, _other), do: :ok
 
   @doc """
   Triggers an async maintenance operation on the project's graph.
@@ -605,112 +585,6 @@ defmodule Gingko.Memory do
         normalize_error(error)
     end
   end
-
-  @doc """
-  Fetches a list of memory node bodies by id, in the same shape `latest_memories/1`
-  returns: `[%{node: serialized_node, metadata: serialized_metadata}, ...]`.
-
-  Missing ids are silently skipped. Returns `{:ok, list}` on happy path so callers
-  can pipe into `with`.
-  """
-  @spec get_nodes(String.t(), [String.t()]) :: {:ok, [map()]} | {:error, map()}
-  def get_nodes(project_id, node_ids) when is_binary(project_id) and is_list(node_ids) do
-    project = root_memory_descriptor(project_id)
-    repo_id = project.repo_id
-
-    case Mnemosyne.get_metadata(repo_id, node_ids) do
-      {:ok, metadata_map} ->
-        entries =
-          node_ids
-          |> Enum.map(&serialize_node_entry(repo_id, &1, metadata_map))
-          |> Enum.reject(&is_nil/1)
-
-        {:ok, entries}
-
-      {:error, error} ->
-        normalize_error(error)
-    end
-  end
-
-  defp serialize_node_entry(repo_id, node_id, metadata_map) do
-    case Mnemosyne.get_node(repo_id, node_id) do
-      {:ok, %{} = node} ->
-        %{
-          node: node |> Serializer.node() |> Serializer.without_embedding(),
-          metadata: Serializer.metadata(Map.get(metadata_map, node_id))
-        }
-
-      _ ->
-        nil
-    end
-  end
-
-  @doc """
-  Returns all memory node bodies linked to a given tag via `:membership` edges.
-  Shape matches `get_nodes/2`.
-  """
-  @spec memories_linked_to_tag(String.t(), String.t()) :: {:ok, [map()]} | {:error, map()}
-  def memories_linked_to_tag(project_id, tag_node_id)
-      when is_binary(project_id) and is_binary(tag_node_id) do
-    project = root_memory_descriptor(project_id)
-    repo_id = project.repo_id
-    graph = load_graph(repo_id)
-
-    case Map.get(graph.nodes, tag_node_id) do
-      %Mnemosyne.Graph.Node.Tag{links: links} ->
-        memory_ids =
-          links
-          |> Map.get(:membership, MapSet.new())
-          |> MapSet.to_list()
-
-        get_nodes(project_id, memory_ids)
-
-      _ ->
-        {:ok, []}
-    end
-  end
-
-  @doc """
-  Returns the top `k` tags in a project ranked by `:membership` edge count
-  (descending). Used by `mix gingko.summaries.backfill` to seed the hot-tag
-  set for existing projects.
-
-  Returns `{:error, %{code: :project_not_open, ...}}` when the project repo
-  is not open.
-  """
-  @spec top_tags(String.t(), non_neg_integer()) ::
-          {:ok, [%{id: String.t(), label: String.t(), memory_count: non_neg_integer()}]}
-          | {:error, map()}
-  def top_tags(project_id, k) when is_binary(project_id) and is_integer(k) and k >= 0 do
-    project = root_memory_descriptor(project_id)
-
-    case Mnemosyne.get_graph(project.repo_id) do
-      %Mnemosyne.Graph{} = graph ->
-        tags =
-          graph.nodes
-          |> Map.values()
-          |> Enum.flat_map(fn
-            %Mnemosyne.Graph.Node.Tag{id: id, label: label, links: links} ->
-              [%{id: id, label: label, memory_count: membership_count(links)}]
-
-            _ ->
-              []
-          end)
-          |> Enum.sort_by(& &1.memory_count, :desc)
-          |> Enum.take(k)
-
-        {:ok, tags}
-
-      {:error, error} ->
-        normalize_error(error)
-    end
-  end
-
-  defp membership_count(links) when is_map(links) do
-    links |> Map.get(:membership, MapSet.new()) |> MapSet.size()
-  end
-
-  defp membership_count(_), do: 0
 
   def latest_memories(%{project_id: project_id} = attrs) do
     project = root_memory_descriptor(project_id)

@@ -3,16 +3,24 @@ defmodule GingkoWeb.Api.RefreshPrincipalMemoryController do
 
   use GingkoWeb, :controller
 
-  alias Gingko.Summaries.Refresh
+  alias Gingko.Summaries.ProjectSummaryWorker
 
   action_fallback GingkoWeb.Api.FallbackController
 
-  def create(conn, %{"project_id" => project_id} = params) do
-    scope = Map.get(params, "scope", "all")
-    cluster_slug = params["cluster_slug"]
+  def create(conn, %{"project_id" => project_id}) do
+    %{project_key: project_id}
+    |> ProjectSummaryWorker.new(unique: false)
+    |> Oban.insert()
+    |> case do
+      {:ok, job} ->
+        json(conn, %{
+          enqueued_jobs: [
+            %{id: job.id, worker: "ProjectSummaryWorker", args: job.args}
+          ]
+        })
 
-    with {:ok, result} <- Refresh.run(project_id, scope, cluster_slug) do
-      json(conn, result)
+      {:error, reason} ->
+        {:error, %{code: :enqueue_failed, message: inspect(reason)}}
     end
   end
 end

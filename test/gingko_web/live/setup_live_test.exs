@@ -271,10 +271,8 @@ defmodule GingkoWeb.SetupLiveTest do
 
       assert html =~ "Memory Summaries"
       assert html =~ "Enabled"
-      assert html =~ "Hot tags"
-      assert html =~ "Cluster regen memory threshold"
-      assert html =~ "Cluster regen idle seconds"
-      assert html =~ "Principal regen debounce seconds"
+      assert html =~ "Regen debounce seconds"
+      assert html =~ "Summary memory count"
       assert html =~ "Session primer recent count"
       assert html =~ "Step summarization"
       assert html =~ "Chunk size (chars)"
@@ -322,10 +320,8 @@ defmodule GingkoWeb.SetupLiveTest do
           },
           "summaries" => %{
             "enabled" => "true",
-            "hot_tags_k" => "25",
-            "cluster_regen_memory_threshold" => "7",
-            "cluster_regen_idle_seconds" => "900",
-            "principal_regen_debounce_seconds" => "45",
+            "regen_debounce_seconds" => "45",
+            "summary_memory_count" => "150",
             "session_primer_recent_count" => "11",
             "chunk_chars" => "200000",
             "max_chunks" => "4",
@@ -344,10 +340,8 @@ defmodule GingkoWeb.SetupLiveTest do
       settings = Settings.load(home: tmp_dir)
 
       assert settings.summaries.enabled == true
-      assert settings.summaries.hot_tags_k == 25
-      assert settings.summaries.cluster_regen_memory_threshold == 7
-      assert settings.summaries.cluster_regen_idle_seconds == 900
-      assert settings.summaries.principal_regen_debounce_seconds == 45
+      assert settings.summaries.regen_debounce_seconds == 45
+      assert settings.summaries.summary_memory_count == 150
       assert settings.summaries.session_primer_recent_count == 11
       assert settings.summaries.chunk_chars == 200_000
       assert settings.summaries.max_chunks == 4

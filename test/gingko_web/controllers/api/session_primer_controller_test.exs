@@ -19,10 +19,8 @@ defmodule GingkoWeb.Api.SessionPrimerControllerTest do
   end
 
   describe "GET /api/projects/:project_id/session_primer" do
-    test "returns a markdown-formatted primer with all five regions when populated",
+    test "returns markdown with playbook, charter, summary and recent_memories regions",
          %{conn: conn} do
-      {:ok, _} = Summaries.seed_playbook("p")
-
       {:ok, _} =
         Summaries.upsert_section(%{
           project_key: "p",
@@ -33,19 +31,8 @@ defmodule GingkoWeb.Api.SessionPrimerControllerTest do
       {:ok, _} =
         Summaries.upsert_section(%{
           project_key: "p",
-          kind: "state",
+          kind: "summary",
           content: "In alpha."
-        })
-
-      {:ok, _} =
-        Summaries.upsert_cluster(%{
-          project_key: "p",
-          tag_node_id: "t",
-          tag_label: "Auth",
-          slug: "auth",
-          memory_count: 5,
-          headline: "auth summary",
-          dirty: false
         })
 
       conn = get(conn, "/api/projects/p/session_primer")
@@ -54,15 +41,13 @@ defmodule GingkoWeb.Api.SessionPrimerControllerTest do
       assert body["format"] == "markdown"
       assert body["content"] =~ "region:playbook"
       assert body["content"] =~ "region:charter"
-      assert body["content"] =~ "region:state"
-      assert body["content"] =~ "region:cluster_index"
+      assert body["content"] =~ "region:summary"
       assert body["content"] =~ "region:recent_memories"
-      assert body["content"] =~ "**auth**"
+      assert body["content"] =~ "Ship small."
+      assert body["content"] =~ "In alpha."
     end
 
     test "omits the charter region when no charter row exists", %{conn: conn} do
-      {:ok, _} = Summaries.seed_playbook("p")
-
       conn = get(conn, "/api/projects/p/session_primer")
       body = json_response(conn, 200)
 
@@ -70,8 +55,6 @@ defmodule GingkoWeb.Api.SessionPrimerControllerTest do
     end
 
     test "honors recent_count query parameter", %{conn: conn} do
-      {:ok, _} = Summaries.seed_playbook("p")
-
       conn = get(conn, "/api/projects/p/session_primer?recent_count=3")
       body = json_response(conn, 200)
 
@@ -80,8 +63,6 @@ defmodule GingkoWeb.Api.SessionPrimerControllerTest do
     end
 
     test "returns 422 invalid_params when recent_count is not an integer", %{conn: conn} do
-      {:ok, _} = Summaries.seed_playbook("p")
-
       conn = get(conn, "/api/projects/p/session_primer?recent_count=abc")
       body = json_response(conn, 422)
 

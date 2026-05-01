@@ -5,8 +5,8 @@ defmodule Gingko.MCP.Server do
   spanning the write flow (`open_project_memory` -> `start_session` ->
   `append_step` -> `commit_session` / `close_async`) and the read flow
   (`recall`, `get_node`, `get_session_state`, `list_projects`,
-  `latest_memories`, `get_session_primer`, `get_cluster`), along with the
-  maintenance and charter operations.
+  `latest_memories`, `get_session_primer`), along with the maintenance and
+  charter operations.
   """
   use Anubis.Server,
     name: "gingko",
@@ -25,7 +25,6 @@ defmodule Gingko.MCP.Server do
   component(Gingko.MCP.Tools.LatestMemories)
   component(Gingko.MCP.Tools.RunMaintenance)
   component(Gingko.MCP.Tools.GetSessionPrimer)
-  component(Gingko.MCP.Tools.GetCluster)
   component(Gingko.MCP.Tools.RefreshPrincipalMemory)
   component(Gingko.MCP.Tools.SetCharter)
 end

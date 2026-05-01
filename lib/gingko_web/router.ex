@@ -56,7 +56,6 @@ defmodule GingkoWeb.Router do
     post "/projects/:project_id/maintenance", MaintenanceController, :create
 
     get "/projects/:project_id/session_primer", SessionPrimerController, :show
-    get "/projects/:project_id/clusters/:slug", ClusterController, :show
     post "/projects/:project_id/summaries/refresh", RefreshPrincipalMemoryController, :create
     get "/summaries/status", SummariesStatusController, :show
     put "/projects/:project_id/charter", CharterController, :update

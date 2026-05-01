@@ -81,10 +81,8 @@ defmodule Gingko.ApplicationTest do
       },
       summaries: %{
         enabled: false,
-        hot_tags_k: 15,
-        cluster_regen_memory_threshold: 10,
-        cluster_regen_idle_seconds: 1800,
-        principal_regen_debounce_seconds: 60,
+        regen_debounce_seconds: 60,
+        summary_memory_count: 200,
         session_primer_recent_count: 15
       },
       overrides: %{},

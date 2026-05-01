@@ -6,8 +6,7 @@ defmodule GingkoWeb.ProjectLive.SummariesTabComponentTest do
   import Phoenix.LiveViewTest
 
   alias Gingko.Summaries
-  alias Gingko.Summaries.ClusterWorker
-  alias Gingko.Summaries.PrincipalStateWorker
+  alias Gingko.Summaries.ProjectSummaryWorker
   alias GingkoWeb.ProjectLive.SummariesTabComponent
 
   @endpoint GingkoWeb.Endpoint
@@ -18,35 +17,24 @@ defmodule GingkoWeb.ProjectLive.SummariesTabComponentTest do
   end
 
   describe "empty state" do
-    test "renders placeholder text for every panel when no data exists" do
+    test "renders placeholder text for charter and summary panels when no data exists" do
       html =
         render_component(SummariesTabComponent,
           id: "summaries-tab",
           project_id: "empty-proj"
         )
 
-      assert html =~ "Playbook"
       assert html =~ "Charter"
-      assert html =~ "State"
-      assert html =~ "Clusters"
+      assert html =~ "Summary"
 
-      assert html =~ "No playbook seeded"
       assert html =~ "No charter set"
-      assert html =~ "No state summary"
-      assert html =~ "No cluster summaries"
+      assert html =~ "No summary yet"
     end
   end
 
   describe "rendering with seeded data" do
-    test "renders playbook, charter, state content, and cluster rows" do
+    test "renders charter and summary content" do
       project_key = "seeded-proj"
-
-      {:ok, _} =
-        Summaries.upsert_section(%{
-          project_key: project_key,
-          kind: "playbook",
-          content: "# The Playbook Heading\n\nbody body body"
-        })
 
       {:ok, _} =
         Summaries.upsert_section(%{
@@ -58,20 +46,8 @@ defmodule GingkoWeb.ProjectLive.SummariesTabComponentTest do
       {:ok, _} =
         Summaries.upsert_section(%{
           project_key: project_key,
-          kind: "state",
-          content: "## Current state\n\nState body."
-        })
-
-      {:ok, _} =
-        Summaries.upsert_cluster(%{
-          project_key: project_key,
-          tag_node_id: "tag-auth",
-          tag_label: "Auth",
-          slug: "auth",
-          headline: "Auth cluster headline",
-          memory_count: 12,
-          last_generated_at: ~U[2026-04-20 09:00:00Z],
-          dirty: false
+          kind: "summary",
+          content: "## Current focus\n\nSummary body."
         })
 
       html =
@@ -79,48 +55,15 @@ defmodule GingkoWeb.ProjectLive.SummariesTabComponentTest do
           id: "summaries-tab",
           project_id: project_key
         )
-
-      assert html =~ "The Playbook Heading"
-      assert html =~ "body body body"
 
       assert html =~ "Charter prose here."
-
-      assert html =~ "Current state"
-      assert html =~ "State body."
-
-      assert html =~ "auth"
-      assert html =~ "Auth cluster headline"
-      assert html =~ "12"
-    end
-
-    test "cluster row marked dirty shows dirty indicator" do
-      project_key = "dirty-proj"
-
-      {:ok, _} =
-        Summaries.upsert_cluster(%{
-          project_key: project_key,
-          tag_node_id: "tag-graph",
-          tag_label: "Graph",
-          slug: "graph",
-          headline: "Graph headline",
-          memory_count: 3,
-          dirty: true,
-          dirty_since: ~U[2026-04-20 12:00:00Z]
-        })
-
-      html =
-        render_component(SummariesTabComponent,
-          id: "summaries-tab",
-          project_id: project_key
-        )
-
-      assert html =~ "graph"
-      assert html =~ "dirty"
+      assert html =~ "Current focus"
+      assert html =~ "Summary body."
     end
   end
 
   describe "save_charter event" do
-    test "persists new charter content and shows flash" do
+    test "persists new charter content" do
       project_key = "charter-proj"
 
       {:ok, view, _html} =
@@ -138,7 +81,7 @@ defmodule GingkoWeb.ProjectLive.SummariesTabComponentTest do
       assert section.content == "brand new charter"
     end
 
-    test "does not overwrite a locked charter and surfaces the locked-error flash" do
+    test "does not overwrite a locked charter and surfaces a flash" do
       project_key = "locked-proj"
 
       {:ok, _} =
@@ -170,9 +113,9 @@ defmodule GingkoWeb.ProjectLive.SummariesTabComponentTest do
     end
   end
 
-  describe "refresh_principal_memory events" do
-    test "state scope enqueues a PrincipalStateWorker job" do
-      project_key = "refresh-state-proj"
+  describe "refresh_summary event" do
+    test "enqueues a ProjectSummaryWorker job" do
+      project_key = "refresh-proj"
 
       {:ok, view, _html} =
         live_isolated(
@@ -182,43 +125,13 @@ defmodule GingkoWeb.ProjectLive.SummariesTabComponentTest do
         )
 
       view
-      |> element(~s|button[phx-value-scope="state"]|)
+      |> element("button", "Regenerate")
       |> render_click()
 
       assert [_job] =
                all_enqueued(
-                 worker: PrincipalStateWorker,
+                 worker: ProjectSummaryWorker,
                  args: %{project_key: project_key}
-               )
-    end
-
-    test "cluster scope enqueues a ClusterWorker job with the matched tag_node_id" do
-      project_key = "refresh-cluster-proj"
-
-      {:ok, _cluster} =
-        Summaries.upsert_cluster(%{
-          project_key: project_key,
-          tag_node_id: "tag-xyz",
-          tag_label: "XYZ",
-          slug: "xyz",
-          memory_count: 2
-        })
-
-      {:ok, view, _html} =
-        live_isolated(
-          build_conn(),
-          __MODULE__.Harness,
-          session: %{"project_id" => project_key}
-        )
-
-      view
-      |> element(~s|button[phx-value-scope="cluster"][phx-value-slug="xyz"]|)
-      |> render_click()
-
-      assert [_job] =
-               all_enqueued(
-                 worker: ClusterWorker,
-                 args: %{project_key: project_key, tag_node_id: "tag-xyz"}
                )
     end
   end

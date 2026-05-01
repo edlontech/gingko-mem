@@ -31,10 +31,7 @@ defmodule Gingko.DataCase do
   Clears the summaries tables so tests start from a known state.
   """
   def clean_summaries_tables do
-    for table <- ~w(cluster_membership_deltas cluster_summaries principal_memory_sections) do
-      Repo.query!("DELETE FROM #{table}")
-    end
-
+    Repo.query!("DELETE FROM principal_memory_sections")
     :ok
   end
 

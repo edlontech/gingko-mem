@@ -12,7 +12,14 @@ defmodule Gingko.Summaries.ClusterSummarizer do
             %{
               headline: Zoi.string(),
               content: Zoi.string(),
-              frontmatter: Zoi.map(Zoi.string(), Zoi.any())
+              frontmatter:
+                Zoi.map(
+                  %{
+                    subtopics: Zoi.array(Zoi.string()),
+                    key_entities: Zoi.array(Zoi.string())
+                  },
+                  coerce: true
+                )
             },
             coerce: true
           )
@@ -22,7 +29,14 @@ defmodule Gingko.Summaries.ClusterSummarizer do
   headline (max 120 characters) describing the cluster's current theme, and a
   150-400 word markdown body that synthesizes the memories. No boilerplate, no
   meta-commentary. Respond as a JSON object with keys `headline`, `content`,
-  and `frontmatter` (an object; may be empty).
+  and `frontmatter`. The `frontmatter` object has two array fields:
+
+    - `subtopics`: short labels for finer-grained themes within the cluster
+      (the cluster itself is already named by its tag, so do not repeat it).
+    - `key_entities`: named entities, modules, files, or recurring concepts
+      worth indexing.
+
+  Use empty arrays when nothing fits.
   """
 
   @spec summarize(Gingko.Summaries.ClusterSummary.t(), [map()], :incremental | :full) ::

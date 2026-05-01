@@ -66,12 +66,13 @@ defmodule GingkoWeb.Layouts do
             </a>
 
             <div class="mt-10 space-y-2">
-              <.shell_nav_link navigate={~p"/setup"} icon="hero-cog-6-tooth" label="Setup" />
               <.shell_nav_link
                 navigate={~p"/projects"}
                 icon="hero-command-line"
                 label="Projects"
               />
+              <.shell_nav_link href="/oban" icon="hero-queue-list" label="Oban" />
+              <.shell_nav_link navigate={~p"/setup"} icon="hero-cog-6-tooth" label="Setup" />
             </div>
 
             <div class="gingko-sidebar__card mt-8">
@@ -360,9 +361,21 @@ defmodule GingkoWeb.Layouts do
   defp format_apply_error(:spawn_failed), do: "could not start the updater task."
   defp format_apply_error(other), do: inspect(other)
 
-  attr :navigate, :string, required: true
+  attr :navigate, :string, default: nil
+  attr :href, :string, default: nil
   attr :icon, :string, required: true
   attr :label, :string, required: true
+
+  defp shell_nav_link(%{href: href} = assigns) when is_binary(href) do
+    ~H"""
+    <.link href={@href} class="gingko-sidebar__link">
+      <span class="flex size-10 items-center justify-center rounded-2xl bg-base-100/80 text-base-content/70">
+        <.icon name={@icon} class="size-5" />
+      </span>
+      <span class="text-sm font-medium">{@label}</span>
+    </.link>
+    """
+  end
 
   defp shell_nav_link(assigns) do
     ~H"""

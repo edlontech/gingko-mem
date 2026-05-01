@@ -97,7 +97,7 @@ defmodule Gingko.MixProject do
       {:scholar, "~> 0.4"},
       {:recode, "~> 0.8", only: [:dev], runtime: false},
       {:req, "~> 0.5"},
-      {:sycophant, "~> 0.1"},
+      {:sycophant, github: "edlontech/sycophant", branch: "main", override: true},
       {:swoosh, "~> 1.16"},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
       {:telemetry_metrics, "~> 1.0"},

@@ -10,7 +10,14 @@ defmodule Gingko.Summaries.PrincipalStateSummarizer do
   @schema Zoi.map(
             %{
               content: Zoi.string(),
-              frontmatter: Zoi.map(Zoi.string(), Zoi.any())
+              frontmatter:
+                Zoi.map(
+                  %{
+                    topics: Zoi.array(Zoi.string()),
+                    key_concepts: Zoi.array(Zoi.string())
+                  },
+                  coerce: true
+                )
             },
             coerce: true
           )
@@ -48,7 +55,13 @@ defmodule Gingko.Summaries.PrincipalStateSummarizer do
   where they aid recall.
 
   Respond as a JSON object with keys `content` (the markdown document) and
-  `frontmatter` (an object; may be empty).
+  `frontmatter`. The `frontmatter` object has two array fields:
+
+    - `topics`: the section titles used in the document, in order.
+    - `key_concepts`: named concepts, vocabulary, or modules that recur across
+      the project's clusters and are worth indexing.
+
+  Use empty arrays when nothing fits.
   """
 
   @spec summarize(

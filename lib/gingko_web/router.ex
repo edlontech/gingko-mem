@@ -62,15 +62,21 @@ defmodule GingkoWeb.Router do
     put "/projects/:project_id/charter", CharterController, :update
   end
 
+  scope "/" do
+    pipe_through :browser
+
+    import Oban.Web.Router
+
+    oban_dashboard("/oban")
+  end
+
   if Application.compile_env(:gingko, :dev_routes) do
     import Phoenix.LiveDashboard.Router
-    import Oban.Web.Router
 
     scope "/dev" do
       pipe_through :browser
 
       live_dashboard "/dashboard", metrics: GingkoWeb.Telemetry
-      oban_dashboard("/oban")
     end
   end
 end

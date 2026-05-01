@@ -18,7 +18,7 @@ defmodule Gingko.Summaries.ClusterSummarizerTest do
   end
 
   describe "summarize/3" do
-    test "preserves unknown frontmatter keys from the LLM response" do
+    test "returns the structured frontmatter from the LLM response" do
       cluster = %ClusterSummary{
         project_key: "p",
         tag_node_id: "t",
@@ -33,9 +33,8 @@ defmodule Gingko.Summaries.ClusterSummarizerTest do
         "headline" => "new headline",
         "content" => "new content body",
         "frontmatter" => %{
-          "model" => "claude-sonnet-4-6",
-          "custom_key" => 42,
-          "nested" => %{"a" => 1}
+          "subtopics" => ["session tokens", "OAuth callback"],
+          "key_entities" => ["AuthController", "Guardian"]
         }
       }
 
@@ -59,9 +58,8 @@ defmodule Gingko.Summaries.ClusterSummarizerTest do
       assert result.content == "new content body"
 
       normalized = stringify_map_keys(result.frontmatter)
-      assert normalized["model"] == "claude-sonnet-4-6"
-      assert normalized["custom_key"] == 42
-      assert normalized["nested"] == %{"a" => 1}
+      assert normalized["subtopics"] == ["session tokens", "OAuth callback"]
+      assert normalized["key_entities"] == ["AuthController", "Guardian"]
     end
   end
 

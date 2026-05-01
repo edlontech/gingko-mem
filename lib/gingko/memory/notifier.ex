@@ -52,7 +52,6 @@ defmodule Gingko.Memory.Notifier do
     touch_session_activity(normalized)
     finish_session_if_terminal(normalized)
     ActivityStore.push(normalized)
-    maybe_bump_cluster_version(normalized)
     broadcast(project_id, normalized)
   end
 
@@ -285,21 +284,6 @@ defmodule Gingko.Memory.Notifier do
   end
 
   defp finish_session_if_terminal(_event), do: :ok
-
-  @graph_mutating_events [
-    :changeset_applied,
-    :nodes_deleted,
-    :consolidation_completed,
-    :decay_completed,
-    :validation_completed
-  ]
-
-  defp maybe_bump_cluster_version(%SessionMonitorEvent{type: type, project_id: project_id})
-       when type in @graph_mutating_events do
-    Gingko.Memory.GraphCluster.bump_version(project_id)
-  end
-
-  defp maybe_bump_cluster_version(_event), do: :ok
 
   defp broadcast(project_id, event) do
     Phoenix.PubSub.broadcast(

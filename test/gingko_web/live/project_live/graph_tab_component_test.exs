@@ -13,8 +13,7 @@ defmodule GingkoWeb.ProjectLive.GraphTabComponentTest do
           project_id: "p-1",
           graph: empty_graph(:project, :force),
           layout_mode: :force,
-          selected_node_id: nil,
-          expanded_cluster_id: nil
+          selected_node_id: nil
         )
 
       assert html =~ "Force"
@@ -45,8 +44,7 @@ defmodule GingkoWeb.ProjectLive.GraphTabComponentTest do
           project_id: "p-1",
           graph: empty_graph(:focused, :force),
           layout_mode: :subgoal_tree,
-          selected_node_id: nil,
-          expanded_cluster_id: nil
+          selected_node_id: nil
         )
 
       assert html =~ ~s(phx-value-layout="subgoal_tree")
@@ -124,8 +122,7 @@ defmodule GingkoWeb.ProjectLive.GraphTabComponentTest do
           project_id: "p-1",
           graph: empty_graph(:project, :force),
           layout_mode: :force,
-          selected_node_id: nil,
-          expanded_cluster_id: nil
+          selected_node_id: nil
         )
 
       assert html =~ "No graph data for this view yet."
@@ -140,8 +137,7 @@ defmodule GingkoWeb.ProjectLive.GraphTabComponentTest do
           project_id: "p-1",
           graph: empty_graph(:focused, :force),
           layout_mode: :subgoal_tree,
-          selected_node_id: nil,
-          expanded_cluster_id: nil
+          selected_node_id: nil
         )
 
       assert html =~ "Select a node"
@@ -154,8 +150,7 @@ defmodule GingkoWeb.ProjectLive.GraphTabComponentTest do
           project_id: "p-1",
           graph: empty_graph(:focused, :force),
           layout_mode: :subgoal_tree,
-          selected_node_id: "node-1",
-          expanded_cluster_id: nil
+          selected_node_id: "node-1"
         )
 
       refute html =~ "Select a node in the project view first"
@@ -170,8 +165,7 @@ defmodule GingkoWeb.ProjectLive.GraphTabComponentTest do
           project_id: "p-1",
           graph: empty_graph(:query, :force),
           layout_mode: :provenance,
-          selected_node_id: nil,
-          expanded_cluster_id: nil
+          selected_node_id: nil
         )
 
       assert html =~ "Run a query"
@@ -215,7 +209,6 @@ defmodule GingkoWeb.ProjectLive.GraphTabComponentTest do
           graph={empty_graph()}
           layout_mode={@layout_mode}
           selected_node_id={nil}
-          expanded_cluster_id={nil}
         />
       </div>
       """

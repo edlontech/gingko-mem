@@ -30,7 +30,6 @@ defmodule Gingko.Application do
         GingkoWeb.Telemetry,
         {Phoenix.PubSub, name: Gingko.PubSub},
         Gingko.Memory.ActivityStore,
-        Gingko.Memory.GraphCluster,
         Gingko.Memory.ProjectStatsBroadcaster
       ] ++
         embedding_children() ++

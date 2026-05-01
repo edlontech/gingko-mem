@@ -10,7 +10,6 @@ defmodule Gingko.Memory do
 
   require Logger
 
-  alias Gingko.Memory.GraphCluster
   alias Gingko.Memory.GraphView
   alias Gingko.Memory.ProjectRegistry
   alias Gingko.Memory.Serializer
@@ -175,7 +174,7 @@ defmodule Gingko.Memory do
     graph_view =
       case view do
         :project ->
-          GraphView.clustered_project_view(graph,
+          GraphView.project_view(graph,
             layout_mode: Map.get(attrs, :layout_mode, :force)
           )
 
@@ -207,19 +206,6 @@ defmodule Gingko.Memory do
       :layout_mode,
       Map.get(attrs, :layout_mode, Map.get(graph_view, :layout_mode))
     )
-  end
-
-  def expand_cluster(%{project_id: project_id, cluster_id: cluster_id}) do
-    project = root_memory_descriptor(project_id)
-    graph = load_graph(project.repo_id)
-
-    case GraphCluster.cluster(graph) do
-      {:clustered, clusters} ->
-        GraphView.expand_cluster(graph, cluster_id, clusters)
-
-      :flat ->
-        {:error, :cluster_not_found}
-    end
   end
 
   def open_project(project_id) do

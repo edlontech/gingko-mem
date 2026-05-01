@@ -22,7 +22,6 @@ defmodule GingkoWeb.ProjectLive.GraphView do
     socket
     |> assign(:graph_view, graph_view)
     |> push_graph_update(graph_view)
-    |> restore_cluster_expansion()
   end
 
   @spec push_graph_update(Phoenix.LiveView.Socket.t(), map()) :: Phoenix.LiveView.Socket.t()
@@ -79,29 +78,6 @@ defmodule GingkoWeb.ProjectLive.GraphView do
   end
 
   defp update_selection_classes(graph_view, _selected_id), do: graph_view
-
-  defp restore_cluster_expansion(socket) do
-    cluster_id = Map.get(socket.assigns, :expanded_cluster_id)
-
-    if connected?(socket) and is_binary(cluster_id) do
-      re_expand_cluster(socket, cluster_id)
-    else
-      socket
-    end
-  end
-
-  defp re_expand_cluster(socket, cluster_id) do
-    case Memory.expand_cluster(%{
-           project_id: socket.assigns.project_id,
-           cluster_id: cluster_id
-         }) do
-      {:ok, expansion} ->
-        push_event(socket, "cluster_expanded", expansion)
-
-      {:error, _reason} ->
-        assign(socket, :expanded_cluster_id, nil)
-    end
-  end
 
   @spec graph_view_params(map()) :: map()
   def graph_view_params(%{graph_layout_mode: :force} = assigns) do

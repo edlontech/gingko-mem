@@ -78,7 +78,6 @@ defmodule GingkoWeb.ProjectLive do
       |> assign(:graph_view, GraphView.empty_graph_view(:project))
       |> assign(:selected_node_id, nil)
       |> assign(:expanded_node_ids, MapSet.new())
-      |> assign(:expanded_cluster_id, nil)
       |> assign(:inspector_node_map, %{})
       |> assign(:inspector_loaded_at, nil)
       |> assign(:events_filter_mode, :all)
@@ -123,40 +122,6 @@ defmodule GingkoWeb.ProjectLive do
      socket
      |> assign(:expanded_node_ids, expanded)
      |> GraphView.refresh_graph_view()}
-  end
-
-  def handle_event("expand_cluster", %{"cluster_id" => cluster_id}, socket) do
-    socket =
-      if old = socket.assigns.expanded_cluster_id do
-        push_event(socket, "cluster_collapsed", %{cluster_id: old})
-      else
-        socket
-      end
-
-    case Memory.expand_cluster(%{
-           project_id: socket.assigns.project_id,
-           cluster_id: cluster_id
-         }) do
-      {:ok, expansion} ->
-        {:noreply,
-         socket
-         |> assign(:expanded_cluster_id, cluster_id)
-         |> push_event("cluster_expanded", expansion)}
-
-      {:error, _reason} ->
-        {:noreply,
-         socket
-         |> put_flash(:error, "Cluster no longer exists. Refreshing graph.")
-         |> assign(:expanded_cluster_id, nil)
-         |> GraphView.refresh_graph_view()}
-    end
-  end
-
-  def handle_event("collapse_cluster", %{"cluster_id" => cluster_id}, socket) do
-    {:noreply,
-     socket
-     |> assign(:expanded_cluster_id, nil)
-     |> push_event("cluster_collapsed", %{cluster_id: cluster_id})}
   end
 
   @impl true
@@ -344,7 +309,6 @@ defmodule GingkoWeb.ProjectLive do
       graph={@graph_view}
       layout_mode={@graph_layout_mode}
       selected_node_id={@selected_node_id}
-      expanded_cluster_id={@expanded_cluster_id}
     />
     """
   end

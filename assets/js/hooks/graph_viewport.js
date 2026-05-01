@@ -19,17 +19,6 @@ const BASE_LAYOUT = {
 
 const TOOLTIP_OFFSET = 24
 const TOOLTIP_HIDE_DELAY_MS = 140
-const CLUSTER_PULSE_DURATION_MS = 800
-
-const TYPE_COLORS = {
-  episodic: "#c2416c",
-  intent: "#3a8e44",
-  procedural: "#7059b6",
-  semantic: "#3d83c8",
-  source: "#829ab1",
-  subgoal: "#c18a00",
-  tag: "#ca6a22"
-}
 
 const isDarkMode = () => {
   const theme = document.documentElement.getAttribute("data-theme")
@@ -151,58 +140,6 @@ const baseStyles = () => [
       "transition-property": "opacity",
       "transition-duration": "200ms"
     }
-  },
-  {
-    selector: ".type-cluster",
-    style: {
-      "shape": "ellipse",
-      "border-width": 3,
-      "border-color": "#64748b",
-      "background-color": "#e8ecf1",
-      "font-size": 10,
-      "text-wrap": "wrap",
-      "text-max-width": "100px",
-      "text-valign": "bottom",
-      "text-margin-y": 22
-    }
-  },
-  {
-    selector: ".cluster-pulse",
-    style: {
-      "border-color": "#f59e0b",
-      "border-width": 5,
-      "overlay-opacity": 0.15,
-      "overlay-color": "#f59e0b"
-    }
-  },
-  {
-    selector: ".cluster-stale",
-    style: {
-      "border-style": "dashed"
-    }
-  },
-  {
-    selector: ":parent",
-    style: {
-      "background-opacity": 0.07,
-      "border-width": 2,
-      "border-style": "dashed",
-      "border-color": "#94a3b8",
-      "padding": "20px",
-      "text-valign": "top",
-      "text-margin-y": -10,
-      "font-size": 10
-    }
-  },
-  {
-    selector: 'edge[linkType = "inter_cluster"]',
-    style: {
-      "line-color": "#64748b",
-      "width": "mapData(weight, 1, 50, 2, 8)",
-      "opacity": 0.6,
-      "line-style": "solid",
-      "curve-style": "bezier"
-    }
   }
 ]
 
@@ -228,91 +165,30 @@ const typeStyles = (styles) => {
 const stylesForGraph = (graph) => [...baseStyles(), ...typeStyles(graph.type_styles)]
 
 const toElements = (graph) => {
-  const nodes = (graph.nodes || []).map((node) => {
-    const isCluster = String(node.type) === "cluster"
-    const element = {
-      data: {
-        id: node.id,
-        label: node.label,
-        displayLabel: node.display_label || node.label,
-        tooltipLabel: node.tooltip_label || node.label,
-        tooltipSections: node.tooltip_sections || [],
-        type: String(node.type),
-        degree: node.degree || 0,
-        sortKey: node.sort_key || node.id
-      },
-      classes: (node.classes || []).join(" ")
-    }
+  const nodes = (graph.nodes || []).map((node) => ({
+    data: {
+      id: node.id,
+      label: node.label,
+      displayLabel: node.display_label || node.label,
+      tooltipLabel: node.tooltip_label || node.label,
+      tooltipSections: node.tooltip_sections || [],
+      type: String(node.type),
+      degree: node.degree || 0,
+      sortKey: node.sort_key || node.id
+    },
+    classes: (node.classes || []).join(" ")
+  }))
 
-    if (isCluster) {
-      element.data.nodeCount = node.node_count || 0
-      element.data.typeDistribution = node.type_distribution || {}
-      element.data.internalEdgeCount = node.internal_edge_count || 0
-    }
-
-    if (node.parent) {
-      element.data.parent = node.parent
-    }
-
-    return element
-  })
-
-  const edges = (graph.edges || []).map((edge) => {
-    const data = {
+  const edges = (graph.edges || []).map((edge) => ({
+    data: {
       id: edge.id,
       source: edge.source,
       target: edge.target,
       linkType: edge.type || "sibling"
     }
-
-    if (edge.weight != null) {
-      data.weight = edge.weight
-    }
-
-    return {data}
-  })
+  }))
 
   return [...nodes, ...edges]
-}
-
-const applyClusterPieStyles = (cy) => {
-  cy.nodes(".type-cluster").forEach((node) => {
-    const dist = node.data("typeDistribution") || {}
-    const nodeCount = node.data("nodeCount") || 0
-    const size = Math.min(Math.max(60, Math.sqrt(nodeCount) * 12), 120)
-    const entries = Object.entries(dist).filter(([, count]) => count > 0)
-    const total = entries.reduce((sum, [, count]) => sum + count, 0)
-
-    node.style({"width": size, "height": size})
-
-    if (total === 0 || entries.length === 0) {
-      node.style({"pie-size": "0%"})
-      return
-    }
-
-    node.style({
-      "pie-size": "100%",
-      "background-color": "#e8ecf1"
-    })
-
-    for (let i = 1; i <= 16; i++) {
-      node.style({
-        [`pie-${i}-background-size`]: 0,
-        [`pie-${i}-background-color`]: "#e8ecf1"
-      })
-    }
-
-    entries.forEach(([type, count], index) => {
-      const sliceIndex = index + 1
-      if (sliceIndex > 16) return
-      const pct = (count / total) * 100
-      const color = TYPE_COLORS[type] || "#94a3b8"
-      node.style({
-        [`pie-${sliceIndex}-background-size`]: pct,
-        [`pie-${sliceIndex}-background-color`]: color
-      })
-    })
-  })
 }
 
 const readGraphPayload = (el) => {
@@ -341,7 +217,6 @@ export const GraphViewport = {
     this.tooltipContentEl = this.tooltipEl?.querySelector('[data-role="graph-tooltip-content"]') || null
     this.hideTooltipTimer = null
     this.isTooltipHovered = false
-    this._clusterCache = new Map()
     this.graph = readGraphPayload(this.el)
     this.typeVisibility = this.buildTypeVisibility(this.graph)
     this.visibleTypes = this.visibleTypesForGraph(this.graph)
@@ -355,16 +230,7 @@ export const GraphViewport = {
     })
 
     this.cy.on("tap", "node", (event) => {
-      const node = event.target
-      if (node.hasClass("type-cluster") && !node.isChild()) {
-        if (node.isParent()) {
-          this.pushEvent("collapse_cluster", {cluster_id: node.id()})
-        } else {
-          this.pushEvent("expand_cluster", {cluster_id: node.id()})
-        }
-      } else {
-        this.pushEvent("select_graph_node", {id: node.id()})
-      }
+      this.pushEvent("select_graph_node", {id: event.target.id()})
     })
 
     this.cy.on("mouseover", "node", (event) => {
@@ -387,7 +253,6 @@ export const GraphViewport = {
 
     this.bindFilterControls()
     this.applyLayout(true)
-    applyClusterPieStyles(this.cy)
     this.applyTypeFilter()
     this.syncFilterControls()
 
@@ -405,7 +270,6 @@ export const GraphViewport = {
       this.hideTooltip()
       this.bindFilterControls()
       this.applyLayout(false)
-      applyClusterPieStyles(this.cy)
       this.applyTypeFilter()
       this.syncFilterControls()
     })
@@ -415,105 +279,6 @@ export const GraphViewport = {
       if (id) {
         this.cy.getElementById(id).addClass("is-selected")
       }
-    })
-
-    this.handleEvent("cluster_expanded", (payload) => {
-      const {cluster_id, nodes, edges} = payload
-      const clusterNode = this.cy.getElementById(cluster_id)
-
-      if (clusterNode.length > 0) {
-        this._clusterCache.set(cluster_id, {
-          id: clusterNode.id(),
-          data: {...clusterNode.data()},
-          classes: clusterNode.classes()
-        })
-      }
-
-      this.cy.batch(() => {
-        const childElements = (nodes || []).map((node) => ({
-          group: "nodes",
-          data: {
-            id: node.id,
-            label: node.label,
-            displayLabel: node.display_label || node.label,
-            tooltipLabel: node.tooltip_label || node.label,
-            tooltipSections: node.tooltip_sections || [],
-            type: String(node.type),
-            degree: node.degree || 0,
-            parent: cluster_id
-          },
-          classes: (node.classes || []).join(" ")
-        }))
-
-        const childEdges = (edges || []).map((edge) => ({
-          group: "edges",
-          data: {
-            id: edge.id,
-            source: edge.source,
-            target: edge.target,
-            linkType: edge.type || "sibling"
-          }
-        }))
-
-        this.cy.add([...childElements, ...childEdges])
-      })
-
-      if (clusterNode.length > 0) {
-        clusterNode.style({
-          "pie-size": "0%",
-          "background-color": "transparent",
-          "background-opacity": 0.07
-        })
-        for (let i = 1; i <= 16; i++) {
-          clusterNode.style({[`pie-${i}-background-size`]: 0})
-        }
-      }
-
-      const children = this.cy.getElementById(cluster_id).children()
-      children.forEach((child) => {
-        const type = String(child.data("type"))
-        const style = this.graph.type_styles[type] || DEFAULT_TYPE_STYLES[type]
-        if (style) {
-          child.style({
-            "background-color": style.fill,
-            "border-color": style.border
-          })
-        }
-      })
-
-      this.applyLayout(false)
-    })
-
-    this.handleEvent("cluster_collapsed", ({cluster_id}) => {
-      const clusterNode = this.cy.getElementById(cluster_id)
-
-      this.cy.batch(() => {
-        if (clusterNode.length > 0 && clusterNode.isParent()) {
-          const children = clusterNode.children()
-          children.connectedEdges().remove()
-          children.remove()
-        }
-      })
-
-      applyClusterPieStyles(this.cy)
-      this.applyLayout(false)
-    })
-
-    this.handleEvent("cluster_pulse", ({affected_cluster_ids}) => {
-      (affected_cluster_ids || []).forEach((clusterId) => {
-        const node = this.cy.getElementById(clusterId)
-        if (node.length === 0) return
-
-        node.addClass("cluster-pulse")
-
-        if (node.isParent()) {
-          node.addClass("cluster-stale")
-        }
-
-        setTimeout(() => {
-          node.removeClass("cluster-pulse")
-        }, CLUSTER_PULSE_DURATION_MS)
-      })
     })
   },
 
@@ -527,7 +292,6 @@ export const GraphViewport = {
     this.hideTooltip()
     this.bindFilterControls()
     this.applyLayout(false)
-    applyClusterPieStyles(this.cy)
     this.applyTypeFilter()
     this.syncFilterControls()
   },
@@ -653,12 +417,7 @@ export const GraphViewport = {
   applyTypeFilter() {
     this.cy.batch(() => {
       this.cy.nodes().forEach((node) => {
-        const type = String(node.data("type"))
-        if (type === "cluster") {
-          node.removeClass("is-filtered-out")
-          return
-        }
-        const visible = this.visibleTypes.has(type)
+        const visible = this.visibleTypes.has(String(node.data("type")))
         node.toggleClass("is-filtered-out", !visible)
       })
 
@@ -679,8 +438,6 @@ export const GraphViewport = {
     if (visibleNodes.length > 0) {
       this.cy.fit(visibleNodes, BASE_LAYOUT.padding)
     }
-
-    applyClusterPieStyles(this.cy)
   },
 
   ensureTooltip() {

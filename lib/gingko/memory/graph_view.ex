@@ -1,50 +1,12 @@
 defmodule Gingko.Memory.GraphView do
   @moduledoc false
 
-  alias Gingko.Memory.GraphCluster
   alias Gingko.Memory.Serializer
   alias Mnemosyne.Graph
 
   @spec project_view(Graph.t(), keyword()) :: map()
   def project_view(%Graph{} = graph, opts \\ []) do
     build_view(:project, graph, visible_ids(graph), opts)
-  end
-
-  @spec clustered_project_view(Graph.t(), keyword()) :: map()
-  def clustered_project_view(%Graph{} = graph, opts \\ []) do
-    case GraphCluster.cluster(graph) do
-      :flat ->
-        project_view(graph, opts)
-
-      {:clustered, clusters} ->
-        build_clustered_view(graph, clusters, opts)
-    end
-  end
-
-  @spec expand_cluster(Graph.t(), String.t(), [map()]) ::
-          {:ok, map()} | {:error, :cluster_not_found}
-  def expand_cluster(%Graph{} = graph, cluster_id, clusters) do
-    case Enum.find(clusters, &(&1.id == cluster_id)) do
-      nil ->
-        {:error, :cluster_not_found}
-
-      cluster ->
-        visible_ids =
-          cluster.node_ids
-          |> MapSet.to_list()
-          |> Enum.filter(&Map.has_key?(graph.nodes, &1))
-
-        nodes =
-          visible_ids
-          |> Enum.map(&Map.fetch!(graph.nodes, &1))
-          |> Enum.map(&serialize_node(&1, %{}))
-          |> Enum.sort_by(& &1.id)
-
-        visible_id_set = MapSet.new(visible_ids)
-        edges = build_edges(graph, visible_id_set) |> Enum.sort_by(& &1.id)
-
-        {:ok, %{cluster_id: cluster_id, nodes: nodes, edges: edges, layout_mode: :force}}
-    end
   end
 
   @spec focused_view(Graph.t(), String.t() | nil, MapSet.t()) :: map()
@@ -105,131 +67,6 @@ defmodule Gingko.Memory.GraphView do
       selection: %{},
       expanded_node_ids: expanded_node_ids
     )
-  end
-
-  defp build_clustered_view(graph, clusters, opts) do
-    cluster_nodes = Enum.map(clusters, &serialize_cluster_node/1)
-    inter_edges = build_inter_cluster_edges(graph, clusters)
-
-    edge_counts_by_cluster =
-      Enum.reduce(inter_edges, %{}, fn edge, acc ->
-        acc
-        |> Map.update(edge.source, 1, &(&1 + 1))
-        |> Map.update(edge.target, 1, &(&1 + 1))
-      end)
-
-    nodes_with_degree =
-      Enum.map(cluster_nodes, fn node ->
-        %{node | degree: Map.get(edge_counts_by_cluster, node.id, 0)}
-      end)
-
-    %{
-      mode: :clustered_project,
-      title: "Project Graph (clustered)",
-      selection: Keyword.get(opts, :selection, %{node_id: nil, session_id: nil}),
-      layout_mode: :force,
-      nodes: Enum.sort_by(nodes_with_degree, & &1.id),
-      edges: Enum.sort_by(inter_edges, & &1.id),
-      expandable_nodes: [],
-      stats: clustered_stats(graph, clusters)
-    }
-  end
-
-  defp serialize_cluster_node(cluster) do
-    label = "#{cluster.representative_label} (#{cluster.node_count} nodes)"
-
-    type_summary =
-      cluster.type_distribution
-      |> Enum.sort_by(fn {type, _count} -> type end)
-      |> Enum.map_join(", ", fn {type, count} -> "#{type}: #{count}" end)
-
-    %{
-      id: cluster.id,
-      label: label,
-      graph_label: label,
-      tooltip_label: "#{cluster.representative_label} -- #{cluster.node_count} nodes",
-      tooltip_sections: [
-        %{label: "Types", value: type_summary},
-        %{label: "Internal edges", value: "#{cluster.internal_edge_count}"},
-        %{label: "Top node", value: cluster.representative_label}
-      ],
-      type: :cluster,
-      node_count: cluster.node_count,
-      type_distribution: cluster.type_distribution,
-      internal_edge_count: cluster.internal_edge_count,
-      degree: 0,
-      classes: ["type-cluster"],
-      layer_priority: 0,
-      sort_key: nil,
-      details: %{}
-    }
-  end
-
-  defp build_inter_cluster_edges(%Graph{} = graph, clusters) do
-    cluster_lookup =
-      Enum.reduce(clusters, %{}, fn cluster, acc ->
-        Enum.reduce(cluster.node_ids, acc, fn node_id, inner_acc ->
-          Map.put(inner_acc, node_id, cluster.id)
-        end)
-      end)
-
-    graph.nodes
-    |> Map.values()
-    |> Enum.flat_map(&cluster_edges_for_node(&1, cluster_lookup))
-    |> Enum.frequencies()
-    |> Enum.map(fn {{source, target}, count} ->
-      %{
-        id: "#{source}:#{target}",
-        source: source,
-        target: target,
-        type: "inter_cluster",
-        weight: div(count, 2)
-      }
-    end)
-  end
-
-  defp cluster_edges_for_node(node, cluster_lookup) do
-    case Map.get(cluster_lookup, node.id) do
-      nil ->
-        []
-
-      source_cluster ->
-        Enum.flat_map(node.links, &link_cluster_pairs(&1, source_cluster, cluster_lookup))
-    end
-  end
-
-  defp link_cluster_pairs({_type, ids}, source_cluster, cluster_lookup) do
-    ids
-    |> Enum.map(&Map.get(cluster_lookup, &1))
-    |> Enum.reject(&(is_nil(&1) or &1 == source_cluster))
-    |> Enum.map(fn target_cluster ->
-      [s, t] = Enum.sort([source_cluster, target_cluster])
-      {s, t}
-    end)
-  end
-
-  defp clustered_stats(%Graph{} = graph, clusters) do
-    type_counts =
-      clusters
-      |> Enum.flat_map(fn c -> Enum.to_list(c.type_distribution) end)
-      |> Enum.reduce(%{}, fn {type, count}, acc ->
-        Map.update(acc, type, count, &(&1 + count))
-      end)
-
-    total_edges =
-      graph.nodes
-      |> Map.values()
-      |> Enum.reduce(0, fn node, acc ->
-        acc + Enum.reduce(node.links, 0, fn {_type, ids}, inner -> inner + MapSet.size(ids) end)
-      end)
-      |> div(2)
-
-    %{
-      node_count: map_size(graph.nodes),
-      edge_count: total_edges,
-      cluster_count: length(clusters),
-      type_counts: type_counts
-    }
   end
 
   defp build_view(mode, graph, visible_ids, opts) do

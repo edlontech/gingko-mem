@@ -13,7 +13,7 @@ defmodule GingkoWeb.ProjectLive.GraphTabComponent do
   - `:provenance`   -> `Memory.monitor_graph/1` `view: :query`
 
   The shell owns `:graph_layout_mode`, `:graph_view`, `:selected_node_id`,
-  `:expanded_node_ids`, and `:expanded_cluster_id`. This component emits
+  and `:expanded_node_ids`. This component emits
   `{:graph, :select_layout, layout}` intents on button clicks; state flows
   back in through props only.
   """

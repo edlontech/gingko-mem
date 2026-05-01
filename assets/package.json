@@ -3,6 +3,9 @@
   "private": true,
   "packageManager": "yarn@1.22.22",
   "dependencies": {
-    "cytoscape": "^3.33.1"
+    "cytoscape": "^3.33.1",
+    "cytoscape-fcose": "^2.2.0",
+    "graphology": "^0.26.0",
+    "graphology-communities-louvain": "^2.0.2"
   }
 }

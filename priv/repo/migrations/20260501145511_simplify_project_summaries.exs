@@ -6,12 +6,9 @@ defmodule Gingko.Repo.Migrations.SimplifyProjectSummaries do
     drop_if_exists(table(:cluster_summaries))
 
     execute("DELETE FROM principal_memory_sections WHERE kind = 'playbook'")
-    execute("UPDATE principal_memory_sections SET kind = 'summary' WHERE kind = 'state'")
   end
 
   def down do
-    execute("UPDATE principal_memory_sections SET kind = 'state' WHERE kind = 'summary'")
-
     create table(:cluster_summaries, primary_key: false) do
       add(:id, :binary_id, primary_key: true)
       add(:project_key, :string, null: false)

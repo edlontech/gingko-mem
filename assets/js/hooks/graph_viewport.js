@@ -1,4 +1,25 @@
 import cytoscape from "cytoscape"
+import fcose from "cytoscape-fcose"
+import Graph from "graphology"
+import louvain from "graphology-communities-louvain"
+
+if (!cytoscape.__fcoseRegistered) {
+  cytoscape.use(fcose)
+  cytoscape.__fcoseRegistered = true
+}
+
+const CLUSTER_PARENT_PREFIX = "__cluster_parent_"
+const MIN_CLUSTER_SIZE_FOR_PARENT = 2
+
+const SMALL_GRAPH_NODES = 200
+const MEDIUM_GRAPH_NODES = 800
+
+const EDGE_WEIGHTS = {
+  hierarchical: 3.0,
+  membership: 2.0,
+  provenance: 1.0,
+  sibling: 0.5
+}
 
 const DEFAULT_TYPE_STYLES = {
   episodic: {label: "episodic", fill: "#ffe3ea", border: "#c2416c"},
@@ -20,6 +41,10 @@ const BASE_LAYOUT = {
 const TOOLTIP_OFFSET = 24
 const TOOLTIP_HIDE_DELAY_MS = 140
 
+const LOD_FAR_THRESHOLD = 0.55
+const LOD_MID_THRESHOLD = 0.9
+const INITIAL_ZOOM_FLOOR = 1.0
+
 const isDarkMode = () => {
   const theme = document.documentElement.getAttribute("data-theme")
   if (theme === "dark") return true
@@ -30,13 +55,88 @@ const isDarkMode = () => {
 const labelColor = () => isDarkMode() ? "#e2e8f0" : "#1f2933"
 const selectedBorderColor = () => isDarkMode() ? "#e2e8f0" : "#0f172a"
 
-const forceLayout = () => ({
-  ...BASE_LAYOUT,
-  name: "cose",
-  idealEdgeLength: 120,
-  nodeOverlap: 12,
-  edgeElasticity: 120
-})
+const sizeTier = (nodeCount) => {
+  if (nodeCount <= SMALL_GRAPH_NODES) return "small"
+  if (nodeCount <= MEDIUM_GRAPH_NODES) return "medium"
+  return "large"
+}
+
+const computeClusters = (graph) => {
+  const nodes = graph.nodes || []
+  const edges = graph.edges || []
+
+  if (nodes.length === 0) {
+    return []
+  }
+
+  const g = new Graph({type: "undirected", multi: false, allowSelfLoops: false})
+
+  nodes.forEach((node) => g.addNode(node.id))
+
+  edges.forEach((edge) => {
+    if (!g.hasNode(edge.source) || !g.hasNode(edge.target) || edge.source === edge.target) {
+      return
+    }
+
+    if (g.hasEdge(edge.source, edge.target)) {
+      return
+    }
+
+    const weight = EDGE_WEIGHTS[edge.type] ?? 1.0
+    g.addEdge(edge.source, edge.target, {weight})
+  })
+
+  const communities = louvain(g, {getEdgeWeight: "weight"})
+  const buckets = new Map()
+
+  Object.entries(communities).forEach(([nodeId, communityId]) => {
+    const key = String(communityId)
+    if (!buckets.has(key)) {
+      buckets.set(key, [])
+    }
+    buckets.get(key).push(nodeId)
+  })
+
+  nodes.forEach((node) => {
+    if (!Object.prototype.hasOwnProperty.call(communities, node.id)) {
+      const key = `solo-${node.id}`
+      buckets.set(key, [node.id])
+    }
+  })
+
+  return Array.from(buckets.values())
+}
+
+const clusterLayout = (tier, parentLookup, overrides = {}) => {
+  const sameCluster = (edge) => {
+    const a = parentLookup.get(edge.source().id())
+    const b = parentLookup.get(edge.target().id())
+    return Boolean(a) && a === b
+  }
+
+  return {
+    ...BASE_LAYOUT,
+    name: "fcose",
+    quality: "default",
+    animate: false,
+    randomize: true,
+    uniformNodeDimensions: true,
+    packComponents: true,
+    numIter: tier === "small" ? 2500 : 1500,
+    nodeRepulsion: 6000,
+    idealEdgeLength: (edge) => (sameCluster(edge) ? 50 : 250),
+    edgeElasticity: 0.45,
+    nestingFactor: 0.4,
+    gravity: 0.25,
+    gravityRange: 3.8,
+    gravityCompound: 1.0,
+    gravityRangeCompound: 1.5,
+    tile: true,
+    tilingPaddingVertical: 10,
+    tilingPaddingHorizontal: 10,
+    ...overrides
+  }
+}
 
 const selectorForType = (type) => `node[type = "${type}"]`
 
@@ -51,6 +151,7 @@ const baseStyles = () => [
       "color": labelColor(),
       "font-size": 11,
       "font-weight": 600,
+      "min-zoomed-font-size": 8,
       "text-wrap": "none",
       "text-valign": "bottom",
       "text-margin-y": 18,
@@ -105,6 +206,40 @@ const baseStyles = () => [
     }
   },
   {
+    selector: "node.lod-mid",
+    style: {
+      "border-width": 1,
+      "label": ""
+    }
+  },
+  {
+    selector: "node.lod-far",
+    style: {
+      "border-width": 0,
+      "label": "",
+      "width": 18,
+      "height": 18
+    }
+  },
+  {
+    selector: "edge.lod-mid",
+    style: {
+      "curve-style": "straight",
+      "line-style": "solid",
+      "width": 1
+    }
+  },
+  {
+    selector: "edge.lod-far",
+    style: {
+      "curve-style": "haystack",
+      "haystack-radius": 0,
+      "line-style": "solid",
+      "width": 1,
+      "opacity": 0.45
+    }
+  },
+  {
     selector: "node.is-selected",
     style: {
       "border-width": 4,
@@ -140,6 +275,23 @@ const baseStyles = () => [
       "transition-property": "opacity",
       "transition-duration": "200ms"
     }
+  },
+  {
+    selector: "node.cluster-parent",
+    style: {
+      "background-opacity": 0,
+      "background-color": "transparent",
+      "border-width": 0,
+      "border-opacity": 0,
+      "label": "",
+      "events": "no",
+      "padding": 14,
+      "shape": "round-rectangle",
+      "z-compound-depth": "bottom",
+      "width": "label",
+      "height": "label",
+      "min-zoomed-font-size": 9999
+    }
   }
 ]
 
@@ -164,20 +316,47 @@ const typeStyles = (styles) => {
 
 const stylesForGraph = (graph) => [...baseStyles(), ...typeStyles(graph.type_styles)]
 
-const toElements = (graph) => {
-  const nodes = (graph.nodes || []).map((node) => ({
-    data: {
-      id: node.id,
-      label: node.label,
-      displayLabel: node.display_label || node.label,
-      tooltipLabel: node.tooltip_label || node.label,
-      tooltipSections: node.tooltip_sections || [],
-      type: String(node.type),
-      degree: node.degree || 0,
-      sortKey: node.sort_key || node.id
-    },
-    classes: (node.classes || []).join(" ")
+const buildParentLookup = (clusters) => {
+  const lookup = new Map()
+
+  clusters.forEach((memberIds, index) => {
+    if (memberIds.length < MIN_CLUSTER_SIZE_FOR_PARENT) {
+      return
+    }
+
+    const parentId = `${CLUSTER_PARENT_PREFIX}${index}`
+    memberIds.forEach((id) => lookup.set(id, parentId))
+  })
+
+  return lookup
+}
+
+const toElements = (graph, parentLookup = new Map()) => {
+  const parentIds = new Set(parentLookup.values())
+  const parentNodes = Array.from(parentIds).map((parentId) => ({
+    data: {id: parentId, isCluster: true},
+    selectable: false,
+    grabbable: false,
+    classes: "cluster-parent"
   }))
+
+  const nodes = (graph.nodes || []).map((node) => {
+    const parent = parentLookup.get(node.id)
+    return {
+      data: {
+        id: node.id,
+        label: node.label,
+        displayLabel: node.display_label || node.label,
+        tooltipLabel: node.tooltip_label || node.label,
+        tooltipSections: node.tooltip_sections || [],
+        type: String(node.type),
+        degree: node.degree || 0,
+        sortKey: node.sort_key || node.id,
+        ...(parent ? {parent} : {})
+      },
+      classes: (node.classes || []).join(" ")
+    }
+  })
 
   const edges = (graph.edges || []).map((edge) => ({
     data: {
@@ -188,13 +367,15 @@ const toElements = (graph) => {
     }
   }))
 
-  return [...nodes, ...edges]
+  return [...parentNodes, ...nodes, ...edges]
 }
 
 const readGraphPayload = (el) => {
   try {
     const payload = JSON.parse(el.dataset.graph || "{}")
     return {
+      mode: payload.mode || null,
+      title: payload.title || null,
       selection: payload.selection || {},
       type_styles: payload.type_styles || DEFAULT_TYPE_STYLES,
       nodes: payload.nodes || [],
@@ -202,6 +383,8 @@ const readGraphPayload = (el) => {
     }
   } catch (_error) {
     return {
+      mode: null,
+      title: null,
       selection: {},
       type_styles: DEFAULT_TYPE_STYLES,
       nodes: [],
@@ -220,14 +403,28 @@ export const GraphViewport = {
     this.graph = readGraphPayload(this.el)
     this.typeVisibility = this.buildTypeVisibility(this.graph)
     this.visibleTypes = this.visibleTypesForGraph(this.graph)
+    this.rebuildClusters()
     this.cy = cytoscape({
       container: this.el,
-      elements: toElements(this.graph),
+      elements: toElements(this.graph, this.parentLookup),
       style: stylesForGraph(this.graph),
       minZoom: 0.3,
       maxZoom: 2.6,
-      wheelSensitivity: 0.18
+      wheelSensitivity: 0.18,
+      textureOnViewport: true,
+      hideEdgesOnViewport: true,
+      hideLabelsOnViewport: true,
+      motionBlur: false,
+      pixelRatio: "auto",
+      renderer: {
+        name: "canvas",
+        webgl: true,
+        webglDebug: false
+      }
     })
+
+    this.lodLevel = null
+    this.lodFrame = null
 
     this.cy.on("tap", "node", (event) => {
       this.pushEvent("select_graph_node", {id: event.target.id()})
@@ -251,13 +448,18 @@ export const GraphViewport = {
       this.positionTooltip()
     })
 
+    this.cy.on("zoom", () => this.scheduleLodUpdate())
+
     this.bindFilterControls()
     this.applyLayout(true)
     this.applyTypeFilter()
     this.syncFilterControls()
+    this.applyLod()
 
     this.handleEvent("update_graph", (payload) => {
       this.graph = {
+        mode: payload.mode || null,
+        title: payload.title || null,
         selection: payload.selection || {},
         type_styles: payload.type_styles || DEFAULT_TYPE_STYLES,
         nodes: payload.nodes || [],
@@ -265,13 +467,16 @@ export const GraphViewport = {
       }
       this.typeVisibility = this.buildTypeVisibility(this.graph, this.typeVisibility)
       this.visibleTypes = this.visibleTypesForGraph(this.graph)
-      this.cy.json({elements: toElements(this.graph)})
+      this.rebuildClusters()
+      this.cy.json({elements: toElements(this.graph, this.parentLookup)})
       this.cy.style(stylesForGraph(this.graph))
       this.hideTooltip()
       this.bindFilterControls()
       this.applyLayout(false)
       this.applyTypeFilter()
       this.syncFilterControls()
+      this.lodLevel = null
+      this.applyLod()
     })
 
     this.handleEvent("select_graph_node_highlight", ({id}) => {
@@ -287,22 +492,109 @@ export const GraphViewport = {
     this.graph = nextGraph
     this.typeVisibility = this.buildTypeVisibility(nextGraph, this.typeVisibility)
     this.visibleTypes = this.visibleTypesForGraph(nextGraph)
-    this.cy.json({elements: toElements(nextGraph)})
+    this.rebuildClusters()
+    this.cy.json({elements: toElements(nextGraph, this.parentLookup)})
     this.cy.style(stylesForGraph(nextGraph))
     this.hideTooltip()
     this.bindFilterControls()
     this.applyLayout(false)
     this.applyTypeFilter()
     this.syncFilterControls()
+    this.lodLevel = null
+    this.applyLod()
+  },
+
+  rebuildClusters() {
+    const clusters = computeClusters(this.graph)
+    this.clusters = clusters
+    this.parentLookup = buildParentLookup(clusters)
   },
 
   applyLayout(isInitial) {
-    const layout = this.cy.layout({
-      ...forceLayout(),
-      animate: isInitial ? false : true
-    })
+    const nodeCount = (this.graph.nodes || []).length
 
+    if (nodeCount === 0) {
+      return
+    }
+
+    const tier = sizeTier(nodeCount)
+
+    const layout = this.cy.layout(
+      clusterLayout(tier, this.parentLookup || new Map(), {
+        animate: isInitial ? false : "end",
+        animationDuration: 300
+      })
+    )
+    layout.one("layoutstop", () => {
+      this.enforceInitialZoom()
+      this.applyLod()
+    })
     layout.run()
+  },
+
+  enforceInitialZoom() {
+    if (!this.cy) {
+      return
+    }
+
+    if (this.cy.zoom() < INITIAL_ZOOM_FLOOR) {
+      const visibleNodes = this.cy
+        .nodes()
+        .filter((node) => !node.data("isCluster") && !node.hasClass("is-filtered-out"))
+      const target = visibleNodes.length > 0 ? visibleNodes : this.cy.nodes()
+      this.cy.zoom({
+        level: INITIAL_ZOOM_FLOOR,
+        renderedPosition: {x: this.cy.width() / 2, y: this.cy.height() / 2}
+      })
+
+      if (target.length > 0) {
+        this.cy.center(target)
+      }
+    }
+
+    this.applyLod()
+  },
+
+  scheduleLodUpdate() {
+    if (this.lodFrame) {
+      return
+    }
+
+    this.lodFrame = window.requestAnimationFrame(() => {
+      this.lodFrame = null
+      this.applyLod()
+    })
+  },
+
+  lodLevelForZoom(zoom) {
+    if (zoom < LOD_FAR_THRESHOLD) return "far"
+    if (zoom < LOD_MID_THRESHOLD) return "mid"
+    return "near"
+  },
+
+  applyLod() {
+    if (!this.cy) {
+      return
+    }
+
+    const next = this.lodLevelForZoom(this.cy.zoom())
+
+    if (next === this.lodLevel) {
+      return
+    }
+
+    this.lodLevel = next
+
+    this.cy.batch(() => {
+      const targets = this.cy.elements().filter((el) => !el.data("isCluster"))
+      targets.removeClass("lod-mid lod-far")
+
+      if (next === "mid") {
+        targets.addClass("lod-mid")
+      } else if (next === "far") {
+        targets.addClass("lod-far")
+      }
+    })
   },
 
   availableTypes(graph) {
@@ -417,6 +709,10 @@ export const GraphViewport = {
   applyTypeFilter() {
     this.cy.batch(() => {
       this.cy.nodes().forEach((node) => {
+        if (node.data("isCluster")) {
+          return
+        }
+
         const visible = this.visibleTypes.has(String(node.data("type")))
         node.toggleClass("is-filtered-out", !visible)
       })
@@ -433,7 +729,9 @@ export const GraphViewport = {
       this.hideTooltip()
     }
 
-    const visibleNodes = this.cy.nodes().filter((node) => !node.hasClass("is-filtered-out"))
+    const visibleNodes = this.cy
+      .nodes()
+      .filter((node) => !node.data("isCluster") && !node.hasClass("is-filtered-out"))
 
     if (visibleNodes.length > 0) {
       this.cy.fit(visibleNodes, BASE_LAYOUT.padding)
@@ -589,6 +887,11 @@ export const GraphViewport = {
 
   destroyed() {
     this.hideTooltip()
+
+    if (this.lodFrame) {
+      window.cancelAnimationFrame(this.lodFrame)
+      this.lodFrame = null
+    }
 
     if (this.cy) {
       this.cy.destroy()

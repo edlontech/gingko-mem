@@ -445,21 +445,33 @@ defmodule Gingko.Memory do
     end
   end
 
-  def summarize_step(%{session_id: session_id, content: content}) do
-    with {:ok, %{observation: observation, action: action}} <-
-           Gingko.Memory.Summarizer.extract(content) do
-      append_step(%{session_id: session_id, observation: observation, action: action})
-    else
-      {:error, :empty_content} ->
-        {:error, %{code: :invalid_params, message: "content cannot be empty"}}
+  def summarize_step(%{session_id: session_id, content: content} = attrs) do
+    Gingko.Cost.Context.with(
+      %{
+        project_key: Map.get(attrs, :project_key),
+        session_id: session_id,
+        feature: :step_summarization
+      },
+      fn ->
+        with {:ok, %{observation: observation, action: action}} <-
+               Gingko.Memory.Summarizer.extract(content) do
+          append_step(%{session_id: session_id, observation: observation, action: action})
+        else
+          {:error, :empty_content} ->
+            {:error, %{code: :invalid_params, message: "content cannot be empty"}}
 
-      {:error, %{code: _} = error} ->
-        {:error, error}
+          {:error, %{code: _} = error} ->
+            {:error, error}
 
-      {:error, reason} ->
-        Logger.warning("summarize_step failed for session_id=#{session_id}: #{inspect(reason)}")
-        {:error, %{code: :summarization_failed, message: inspect(reason)}}
-    end
+          {:error, reason} ->
+            Logger.warning(
+              "summarize_step failed for session_id=#{session_id}: #{inspect(reason)}"
+            )
+
+            {:error, %{code: :summarization_failed, message: inspect(reason)}}
+        end
+      end
+    )
   end
 
   def append_step(%{session_id: session_id, observation: observation, action: action}) do

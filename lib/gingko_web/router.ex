@@ -21,6 +21,7 @@ defmodule GingkoWeb.Router do
 
     get "/", PageController, :home
     live "/setup", SetupLive
+    live "/cost", CostLive
     live "/projects", ProjectsLive
     live "/projects/:project_id", ProjectLive
     live "/projects/:project_id/:tab", ProjectLive

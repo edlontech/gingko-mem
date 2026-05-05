@@ -28,11 +28,23 @@ config :gingko, Gingko.Repo,
   journal_mode: :wal,
   pool_size: 5
 
+config :gingko, Gingko.Cost.Config,
+  enabled: true,
+  retention_days: 0,
+  batch_size_max: 50,
+  flush_interval_ms: 500
+
 config :gingko, Oban,
   engine: Oban.Engines.Lite,
   repo: Gingko.Repo,
-  queues: [summaries: 2],
-  notifier: Oban.Notifiers.PG
+  queues: [summaries: 2, maintenance: 1],
+  notifier: Oban.Notifiers.PG,
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"0 3 * * *", Gingko.Cost.Pruner}
+     ]}
+  ]
 
 # Configure the endpoint
 config :gingko, GingkoWeb.Endpoint,

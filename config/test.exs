@@ -37,3 +37,5 @@ config :gingko, Gingko.Repo,
 config :gingko, Oban, testing: :manual
 
 config :gingko, Gingko.UpdateChecker, enabled: false
+
+config :gingko, Gingko.Cost.Config, enabled: false

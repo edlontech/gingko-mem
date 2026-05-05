@@ -39,7 +39,10 @@ defmodule Gingko.Summaries.ProjectSummaryWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"project_key" => project_key}}) do
-    WorkerSupport.if_enabled(fn -> run(project_key) end)
+    Gingko.Cost.Context.with(
+      %{project_key: project_key, feature: :project_summary},
+      fn -> WorkerSupport.if_enabled(fn -> run(project_key) end) end
+    )
   end
 
   defp run(project_key) do

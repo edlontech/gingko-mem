@@ -35,6 +35,13 @@ defmodule Gingko.SettingsTest do
     chunk_timeout_ms: 60_000
   }
 
+  @default_cost_tracker %{
+    enabled: true,
+    retention_days: 0,
+    batch_size_max: 50,
+    flush_interval_ms: 500
+  }
+
   test "home/1 falls back to ~/.gingko when GINGKO_HOME is not set" do
     env = fn
       "GINGKO_HOME" -> nil
@@ -214,6 +221,7 @@ defmodule Gingko.SettingsTest do
       mnemosyne: @default_mnemosyne,
       episodic_validation: @default_episodic_validation,
       summaries: @default_summaries,
+      cost_tracker: @default_cost_tracker,
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -277,6 +285,7 @@ defmodule Gingko.SettingsTest do
       mnemosyne: @default_mnemosyne,
       episodic_validation: @default_episodic_validation,
       summaries: @default_summaries,
+      cost_tracker: @default_cost_tracker,
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -316,6 +325,7 @@ defmodule Gingko.SettingsTest do
       mnemosyne: %{@default_mnemosyne | extraction_profile: "coding"},
       episodic_validation: @default_episodic_validation,
       summaries: @default_summaries,
+      cost_tracker: @default_cost_tracker,
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -405,6 +415,7 @@ defmodule Gingko.SettingsTest do
       },
       episodic_validation: @default_episodic_validation,
       summaries: @default_summaries,
+      cost_tracker: @default_cost_tracker,
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -427,6 +438,7 @@ defmodule Gingko.SettingsTest do
       },
       episodic_validation: @default_episodic_validation,
       summaries: @default_summaries,
+      cost_tracker: @default_cost_tracker,
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -455,6 +467,7 @@ defmodule Gingko.SettingsTest do
       },
       episodic_validation: @default_episodic_validation,
       summaries: @default_summaries,
+      cost_tracker: @default_cost_tracker,
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -626,6 +639,7 @@ defmodule Gingko.SettingsTest do
       mnemosyne: @default_mnemosyne,
       episodic_validation: @default_episodic_validation,
       summaries: @default_summaries,
+      cost_tracker: @default_cost_tracker,
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -781,6 +795,113 @@ defmodule Gingko.SettingsTest do
   end
 
   @tag :tmp_dir
+  test "load/1 populates cost_tracker struct field from [cost_tracker] section", %{
+    tmp_dir: tmp_dir
+  } do
+    config_path = Settings.ensure_defaults!(home: tmp_dir)
+
+    File.write!(
+      config_path,
+      """
+      [paths]
+      memory = "memory"
+
+      [llm]
+      provider = "openai"
+      model = "gpt-4o-mini"
+
+      [embeddings]
+      provider = "bumblebee"
+      model = "intfloat/e5-base-v2"
+
+      [server]
+      host = "127.0.0.1"
+      port = 4000
+
+      [cost_tracker]
+      enabled = false
+      retention_days = 30
+      batch_size_max = 100
+      flush_interval_ms = 1000
+      """
+    )
+
+    llm_resolver = fn
+      "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+      _ -> {:error, :unknown_model}
+    end
+
+    settings = Settings.load(home: tmp_dir, llm_resolver: llm_resolver)
+
+    assert settings.ready?
+    assert settings.cost_tracker.enabled == false
+    assert settings.cost_tracker.retention_days == 30
+    assert settings.cost_tracker.batch_size_max == 100
+    assert settings.cost_tracker.flush_interval_ms == 1000
+  end
+
+  @tag :tmp_dir
+  test "load/1 falls back to default cost_tracker values when [cost_tracker] is absent", %{
+    tmp_dir: tmp_dir
+  } do
+    _config_path = Settings.ensure_defaults!(home: tmp_dir)
+
+    llm_resolver = fn
+      "openai:gpt-4o-mini" -> {:ok, %{provider: :openai}}
+      _ -> {:error, :unknown_model}
+    end
+
+    embedding_resolver = fn
+      "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+      _ -> {:error, :unknown_model}
+    end
+
+    settings =
+      Settings.load(
+        home: tmp_dir,
+        llm_resolver: llm_resolver,
+        embedding_resolver: embedding_resolver
+      )
+
+    assert settings.ready?
+    assert settings.cost_tracker.enabled == true
+    assert settings.cost_tracker.retention_days == 0
+    assert settings.cost_tracker.batch_size_max == 50
+    assert settings.cost_tracker.flush_interval_ms == 500
+  end
+
+  @tag :tmp_dir
+  test "cost_tracker_env/1 produces a keyword list matching the struct", %{tmp_dir: tmp_dir} do
+    settings = %Settings{
+      home: tmp_dir,
+      paths: %{memory: "memory"},
+      llm: %{provider: "openai", model: "gpt-4o-mini"},
+      embeddings: %{provider: "openai", model: "text-embedding-3-small"},
+      server: %{host: "127.0.0.1", port: 4000},
+      mnemosyne: @default_mnemosyne,
+      episodic_validation: @default_episodic_validation,
+      summaries: @default_summaries,
+      cost_tracker: %{
+        enabled: false,
+        retention_days: 14,
+        batch_size_max: 25,
+        flush_interval_ms: 250
+      },
+      overrides: %{},
+      value_function: %{},
+      issues: [],
+      ready?: true
+    }
+
+    env = Settings.cost_tracker_env(settings)
+
+    assert env[:enabled] == false
+    assert env[:retention_days] == 14
+    assert env[:batch_size_max] == 25
+    assert env[:flush_interval_ms] == 250
+  end
+
+  @tag :tmp_dir
   test "load/1 does not write Gingko.Summaries.Config env (pure loader)", %{tmp_dir: tmp_dir} do
     config_path = Settings.ensure_defaults!(home: tmp_dir)
 
@@ -849,6 +970,7 @@ defmodule Gingko.SettingsTest do
         parallelism: 2,
         chunk_timeout_ms: 45_000
       },
+      cost_tracker: @default_cost_tracker,
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -1232,6 +1354,7 @@ defmodule Gingko.SettingsTest do
         mnemosyne: @default_mnemosyne,
         episodic_validation: @default_episodic_validation,
         summaries: @default_summaries,
+        cost_tracker: @default_cost_tracker,
         overrides: %{
           "structuring" => %{model: "gpt-4o-mini", temperature: 0.0, max_tokens: nil},
           "retrieval" => %{model: nil, temperature: nil, max_tokens: 512},

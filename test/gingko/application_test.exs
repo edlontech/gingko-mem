@@ -85,6 +85,12 @@ defmodule Gingko.ApplicationTest do
         summary_memory_count: 200,
         session_primer_recent_count: 15
       },
+      cost_tracker: %{
+        enabled: true,
+        retention_days: 0,
+        batch_size_max: 50,
+        flush_interval_ms: 500
+      },
       overrides: %{},
       value_function: %{},
       issues: [],

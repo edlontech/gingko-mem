@@ -28,10 +28,13 @@ defmodule Gingko.Application do
         Gingko.Repo,
         {Oban, Application.fetch_env!(:gingko, Oban)},
         GingkoWeb.Telemetry,
-        {Phoenix.PubSub, name: Gingko.PubSub},
-        Gingko.Memory.ActivityStore,
-        Gingko.Memory.ProjectStatsBroadcaster
+        {Phoenix.PubSub, name: Gingko.PubSub}
       ] ++
+        cost_children() ++
+        [
+          Gingko.Memory.ActivityStore,
+          Gingko.Memory.ProjectStatsBroadcaster
+        ] ++
         embedding_children() ++
         [
           {MnemosyneSupervisor, Gingko.Memory.mnemosyne_supervisor_opts()},
@@ -51,6 +54,7 @@ defmodule Gingko.Application do
       Gingko.Projects.abandon_active_sessions()
       :ok = Gingko.Memory.reopen_registered_projects()
       _ = Gingko.Summaries.DirtyTracker.attach()
+      _ = maybe_attach_cost_handler()
       {:ok, pid}
     end
   end
@@ -86,6 +90,7 @@ defmodule Gingko.Application do
     )
 
     Application.put_env(:gingko, Gingko.Summaries.Config, Settings.summaries_env(settings))
+    Application.put_env(:gingko, Gingko.Cost.Config, Settings.cost_tracker_env(settings))
 
     refresh_runtime_children()
   end
@@ -107,6 +112,20 @@ defmodule Gingko.Application do
       [{Gingko.UpdateChecker, Keyword.delete(opts, :enabled)}]
     else
       []
+    end
+  end
+
+  defp cost_children do
+    if Gingko.Cost.Config.enabled?() do
+      [Gingko.Cost.Recorder]
+    else
+      []
+    end
+  end
+
+  defp maybe_attach_cost_handler do
+    if Gingko.Cost.Config.enabled?() do
+      Gingko.Cost.TelemetryHandler.attach()
     end
   end
 

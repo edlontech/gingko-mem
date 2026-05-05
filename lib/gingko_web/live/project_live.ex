@@ -15,6 +15,7 @@ defmodule GingkoWeb.ProjectLive do
   alias Gingko.Memory.ProjectSnapshot
   alias Gingko.Memory.SessionMonitorEvent
   alias Gingko.Projects
+  alias GingkoWeb.CostSummary
   alias GingkoWeb.ProjectLive.EventsQuery
   alias GingkoWeb.ProjectLive.GraphView
   alias GingkoWeb.ProjectLive.SearchController
@@ -254,6 +255,10 @@ defmodule GingkoWeb.ProjectLive do
             <span class={status_badge_class(@connection_status)}>
               {status_label(@connection_status)}
             </span>
+          </div>
+
+          <div class="mt-3 border-t border-base-200 pt-3">
+            <CostSummary.strip project_key={@project_id} />
           </div>
 
           <nav role="tablist" class="tabs tabs-boxed mt-4 inline-flex">

@@ -36,6 +36,12 @@ defmodule Gingko.Embeddings.BumblebeeServingTest do
         summary_memory_count: 200,
         session_primer_recent_count: 15
       },
+      cost_tracker: %{
+        enabled: true,
+        retention_days: 0,
+        batch_size_max: 50,
+        flush_interval_ms: 500
+      },
       overrides: %{},
       value_function: %{},
       issues: [],
@@ -81,6 +87,12 @@ defmodule Gingko.Embeddings.BumblebeeServingTest do
         regen_debounce_seconds: 60,
         summary_memory_count: 200,
         session_primer_recent_count: 15
+      },
+      cost_tracker: %{
+        enabled: true,
+        retention_days: 0,
+        batch_size_max: 50,
+        flush_interval_ms: 500
       },
       overrides: %{},
       value_function: %{},

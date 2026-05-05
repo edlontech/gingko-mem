@@ -113,10 +113,14 @@ defmodule Gingko.Memory.Summarizer do
   end
 
   defp parallel_extract(chunks) do
+    attribution = Gingko.Cost.Context.current()
+
     Gingko.TaskSupervisor
     |> Task.Supervisor.async_stream_nolink(
       chunks,
-      &extract_chunk/1,
+      fn chunk ->
+        Gingko.Cost.Context.with(attribution, fn -> extract_chunk(chunk) end)
+      end,
       max_concurrency: Config.parallelism(),
       timeout: Config.chunk_timeout_ms(),
       on_timeout: :kill_task,

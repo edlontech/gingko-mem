@@ -1,4 +1,6 @@
 Mimic.copy(Gingko.TestSupport.Mnemosyne.MockLLM, type_check: true)
+Mimic.copy(Gingko.Cost.Config, type_check: true)
+Mimic.copy(Gingko.Cost.Recorder, type_check: true)
 
 test_db_path =
   :gingko

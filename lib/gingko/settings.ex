@@ -40,6 +40,12 @@ defmodule Gingko.Settings do
     "parallelism" => 4,
     "chunk_timeout_ms" => 60_000
   }
+  @default_cost_tracker %{
+    "enabled" => true,
+    "retention_days" => 0,
+    "batch_size_max" => 50,
+    "flush_interval_ms" => 500
+  }
   @pipeline_steps ~w(
     structuring extract retrieval summarize merge_intent
     get_refined_query get_semantic get_procedural get_state
@@ -118,6 +124,7 @@ defmodule Gingko.Settings do
     :mnemosyne,
     :episodic_validation,
     :summaries,
+    :cost_tracker,
     :overrides,
     :value_function,
     :issues,
@@ -132,6 +139,7 @@ defmodule Gingko.Settings do
     :mnemosyne,
     :episodic_validation,
     :summaries,
+    :cost_tracker,
     :overrides,
     :value_function,
     :issues,
@@ -172,6 +180,12 @@ defmodule Gingko.Settings do
             max_chunks: pos_integer(),
             parallelism: pos_integer(),
             chunk_timeout_ms: pos_integer()
+          },
+          cost_tracker: %{
+            enabled: boolean(),
+            retention_days: non_neg_integer(),
+            batch_size_max: pos_integer(),
+            flush_interval_ms: pos_integer()
           },
           overrides: %{
             optional(String.t()) => %{
@@ -266,6 +280,7 @@ defmodule Gingko.Settings do
       mnemosyne: parsed.mnemosyne,
       episodic_validation: parsed.episodic_validation,
       summaries: parsed.summaries,
+      cost_tracker: parsed.cost_tracker,
       overrides: parsed.overrides,
       value_function: parsed.value_function,
       issues: issues,
@@ -288,6 +303,7 @@ defmodule Gingko.Settings do
       mnemosyne: parsed.mnemosyne,
       episodic_validation: parsed.episodic_validation,
       summaries: parsed.summaries,
+      cost_tracker: parsed.cost_tracker,
       overrides: parsed.overrides,
       value_function: parsed.value_function,
       issues: issues,
@@ -331,6 +347,16 @@ defmodule Gingko.Settings do
       max_chunks: summaries.max_chunks,
       parallelism: summaries.parallelism,
       chunk_timeout_ms: summaries.chunk_timeout_ms
+    ]
+  end
+
+  @spec cost_tracker_env(t()) :: keyword()
+  def cost_tracker_env(%__MODULE__{cost_tracker: cost_tracker}) do
+    [
+      enabled: cost_tracker.enabled,
+      retention_days: cost_tracker.retention_days,
+      batch_size_max: cost_tracker.batch_size_max,
+      flush_interval_ms: cost_tracker.flush_interval_ms
     ]
   end
 
@@ -713,6 +739,43 @@ defmodule Gingko.Settings do
             @default_summaries["chunk_timeout_ms"]
           )
       },
+      cost_tracker: %{
+        enabled:
+          normalize_boolean(
+            pick_raw(
+              source,
+              ["cost_tracker", :cost_tracker, "enabled", :enabled],
+              @default_cost_tracker["enabled"]
+            )
+          ),
+        retention_days:
+          normalize_non_negative_integer(
+            pick_raw(
+              source,
+              ["cost_tracker", :cost_tracker, "retention_days", :retention_days],
+              @default_cost_tracker["retention_days"]
+            ),
+            @default_cost_tracker["retention_days"]
+          ),
+        batch_size_max:
+          normalize_positive_integer(
+            pick_raw(
+              source,
+              ["cost_tracker", :cost_tracker, "batch_size_max", :batch_size_max],
+              @default_cost_tracker["batch_size_max"]
+            ),
+            @default_cost_tracker["batch_size_max"]
+          ),
+        flush_interval_ms:
+          normalize_positive_integer(
+            pick_raw(
+              source,
+              ["cost_tracker", :cost_tracker, "flush_interval_ms", :flush_interval_ms],
+              @default_cost_tracker["flush_interval_ms"]
+            ),
+            @default_cost_tracker["flush_interval_ms"]
+          )
+      },
       overrides: parse_overrides(source),
       value_function: parse_value_function(source)
     }
@@ -1069,6 +1132,12 @@ defmodule Gingko.Settings do
         "parallelism" => parsed.summaries.parallelism,
         "chunk_timeout_ms" => parsed.summaries.chunk_timeout_ms
       },
+      "cost_tracker" => %{
+        "enabled" => parsed.cost_tracker.enabled,
+        "retention_days" => parsed.cost_tracker.retention_days,
+        "batch_size_max" => parsed.cost_tracker.batch_size_max,
+        "flush_interval_ms" => parsed.cost_tracker.flush_interval_ms
+      },
       "overrides" => overrides_to_toml(parsed.overrides),
       "value_function" => %{"params" => value_function_to_toml(parsed.value_function)}
     }
@@ -1131,6 +1200,7 @@ defmodule Gingko.Settings do
       "mnemosyne" => @default_mnemosyne,
       "episodic_validation" => @default_episodic_validation,
       "summaries" => @default_summaries,
+      "cost_tracker" => @default_cost_tracker,
       "overrides" => @default_overrides,
       "value_function" => %{"params" => @vf_param_defaults}
     })

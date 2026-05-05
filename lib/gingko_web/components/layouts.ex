@@ -71,6 +71,7 @@ defmodule GingkoWeb.Layouts do
                 icon="hero-command-line"
                 label="Projects"
               />
+              <.shell_nav_link navigate={~p"/cost"} icon="hero-banknotes" label="Costs" />
               <.shell_nav_link href="/oban" icon="hero-queue-list" label="Oban" />
               <.shell_nav_link navigate={~p"/setup"} icon="hero-cog-6-tooth" label="Setup" />
             </div>

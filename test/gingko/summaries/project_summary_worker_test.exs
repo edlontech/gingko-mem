@@ -27,18 +27,30 @@ defmodule Gingko.Summaries.ProjectSummaryWorkerTest do
 
   describe "perform/1" do
     test "writes the summary section on a successful regen" do
-      stub(Memory, :latest_memories, fn %{project_id: "p", top_k: 50} ->
-        {:ok,
-         %{
-           project_id: "p",
-           memories: [%{node: %{proposition: "did a thing"}}]
-         }}
+      stub(Memory, :latest_memories, fn
+        %{project_id: "p", top_k: top_k, types: [:semantic]} ->
+          {:ok,
+           %{
+             project_id: "p",
+             memories: List.duplicate(%{node: %{proposition: "stable fact"}}, top_k)
+           }}
+
+        %{project_id: "p", top_k: top_k, types: [:episodic]} ->
+          {:ok,
+           %{
+             project_id: "p",
+             memories:
+               List.duplicate(
+                 %{node: %{observation: "saw x", action: "did y"}},
+                 top_k
+               )
+           }}
       end)
 
-      stub(ProjectSummarizer, :summarize, fn _memories, _charter ->
+      stub(ProjectSummarizer, :summarize, fn _inputs, _charter ->
         {:ok,
          %{
-           content: "## Focus\n\nThe constitution body.",
+           content: "## Purpose\n\nThe constitution body.",
            frontmatter: %{topics: ["focus"], key_concepts: []}
          }}
       end)
@@ -49,6 +61,24 @@ defmodule Gingko.Summaries.ProjectSummaryWorkerTest do
                Summaries.get_section("p", "summary")
 
       assert content =~ "constitution body"
+    end
+
+    test "splits the memory budget between semantic and episodic with a 75/25 bias" do
+      test_pid = self()
+
+      stub(Memory, :latest_memories, fn %{top_k: top_k, types: [type]} ->
+        send(test_pid, {:fetch, type, top_k})
+        {:ok, %{project_id: "p", memories: []}}
+      end)
+
+      stub(ProjectSummarizer, :summarize, fn _, _ ->
+        {:ok, %{content: "body", frontmatter: %{topics: [], key_concepts: []}}}
+      end)
+
+      assert :ok = perform_job(ProjectSummaryWorker, %{project_key: "p"})
+
+      assert_receive {:fetch, :semantic, 38}
+      assert_receive {:fetch, :episodic, 12}
     end
 
     test "passes the charter content to the summarizer when present" do
@@ -63,15 +93,15 @@ defmodule Gingko.Summaries.ProjectSummaryWorkerTest do
 
       test_pid = self()
 
-      stub(ProjectSummarizer, :summarize, fn memories, charter ->
-        send(test_pid, {:summarize, memories, charter})
+      stub(ProjectSummarizer, :summarize, fn inputs, charter ->
+        send(test_pid, {:summarize, inputs, charter})
 
         {:ok, %{content: "body", frontmatter: %{topics: [], key_concepts: []}}}
       end)
 
       assert :ok = perform_job(ProjectSummaryWorker, %{project_key: "p"})
 
-      assert_receive {:summarize, [], "ship small"}
+      assert_receive {:summarize, %{semantic: [], episodic: []}, "ship small"}
     end
 
     test "discards when summary section is locked" do

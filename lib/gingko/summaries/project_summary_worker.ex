@@ -24,6 +24,10 @@ defmodule Gingko.Summaries.ProjectSummaryWorker do
   alias Gingko.Summaries.ProjectSummarizer
   alias Gingko.Summaries.WorkerSupport
 
+  # Bias toward durable propositions over chronological events when building
+  # the project "constitution".
+  @semantic_ratio 0.75
+
   @spec enqueue(map()) :: {:ok, Oban.Job.t()} | {:error, term()}
   def enqueue(%{project_key: project_key} = args) when is_binary(project_key) do
     period = Config.regen_debounce_seconds()
@@ -50,11 +54,11 @@ defmodule Gingko.Summaries.ProjectSummaryWorker do
 
   defp generate(project_key) do
     charter = charter_for(project_key)
-    memories = fetch_memories(project_key)
+    %{semantic: semantic, episodic: episodic} = inputs = fetch_inputs(project_key)
 
     {summary_result, duration_ms} =
       WorkerSupport.with_duration(fn ->
-        ProjectSummarizer.summarize(memories, charter)
+        ProjectSummarizer.summarize(inputs, charter)
       end)
 
     case summary_result do
@@ -70,7 +74,13 @@ defmodule Gingko.Summaries.ProjectSummaryWorker do
         WorkerSupport.emit(
           [:gingko, :summaries, :project, :regenerated],
           duration_ms,
-          %{project_key: project_key, memory_count: length(memories), ok: true}
+          %{
+            project_key: project_key,
+            memory_count: length(semantic) + length(episodic),
+            semantic_count: length(semantic),
+            episodic_count: length(episodic),
+            ok: true
+          }
         )
 
         :ok
@@ -87,10 +97,22 @@ defmodule Gingko.Summaries.ProjectSummaryWorker do
     end
   end
 
-  defp fetch_memories(project_key) do
+  defp fetch_inputs(project_key) do
+    total = Config.summary_memory_count()
+    semantic_k = max(1, round(total * @semantic_ratio))
+    episodic_k = max(1, total - semantic_k)
+
+    %{
+      semantic: fetch_by_type(project_key, :semantic, semantic_k),
+      episodic: fetch_by_type(project_key, :episodic, episodic_k)
+    }
+  end
+
+  defp fetch_by_type(project_key, type, top_k) do
     case Memory.latest_memories(%{
            project_id: project_key,
-           top_k: Config.summary_memory_count()
+           top_k: top_k,
+           types: [type]
          }) do
       {:ok, %{memories: memories}} -> memories
       {:error, _} -> []

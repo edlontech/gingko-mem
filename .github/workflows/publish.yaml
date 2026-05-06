@@ -65,6 +65,8 @@ jobs:
 
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
+        env:
+          ImageOS: ${{ runner.os == 'Windows' && 'win25' || '' }}
         with:
           elixir-version: "1.19.4"
           otp-version: "28.3"

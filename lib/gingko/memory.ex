@@ -453,10 +453,10 @@ defmodule Gingko.Memory do
         feature: :step_summarization
       },
       fn ->
-        with {:ok, %{observation: observation, action: action}} <-
-               Gingko.Memory.Summarizer.extract(content) do
-          append_step(%{session_id: session_id, observation: observation, action: action})
-        else
+        case Gingko.Memory.Summarizer.extract(content) do
+          {:ok, %{observation: observation, action: action}} ->
+            append_step(%{session_id: session_id, observation: observation, action: action})
+
           {:error, :empty_content} ->
             {:error, %{code: :invalid_params, message: "content cannot be empty"}}
 

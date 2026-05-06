@@ -6,6 +6,8 @@ defmodule Gingko.Cost.Call do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
   @primary_key {:id, :binary_id, autogenerate: false}
 
   @event_kinds ~w(request embedding)

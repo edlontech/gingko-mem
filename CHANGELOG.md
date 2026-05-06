@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.3](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.2...gingko-v0.1.3) (2026-05-06)
+
+
+### Features
+
+* add costs link to sidebar ([3f35ba1](https://github.com/edlontech/gingko-mem/commit/3f35ba17491f90662c17636198555825936fd1ec))
+* Added copilot support ([7d13eea](https://github.com/edlontech/gingko-mem/commit/7d13eea43e30b1ea6d0ea7cf76d5a54b1027d4b6))
+* bias project summary toward durable knowledge ([eee785f](https://github.com/edlontech/gingko-mem/commit/eee785f094f4d8b1c9b9d845d7c66a296b2e7709))
+* Cleaning-up graph clusters, we will use cytoscape LOD ([916e1c6](https://github.com/edlontech/gingko-mem/commit/916e1c6ef1ca1fdc426080169c9afd83137bb565))
+* **cost:** add LLM cost tracking ([5ff4fd3](https://github.com/edlontech/gingko-mem/commit/5ff4fd38a86f468e91abbf5a326fd198ccb9aef9))
+* Improve summarizer frontmatter ([21f2e5d](https://github.com/edlontech/gingko-mem/commit/21f2e5d13578de58fbff2f6ecbd8ca2b4558ef3b))
+* Improve the Summarizer ([d8dc7f0](https://github.com/edlontech/gingko-mem/commit/d8dc7f04c8452f6591a09730566d3e7cfbca1619))
+
 ## [0.1.2](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.1...gingko-v0.1.2) (2026-04-28)
 
 

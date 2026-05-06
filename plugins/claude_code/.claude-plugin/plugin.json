@@ -1,6 +1,6 @@
 {
   "name": "gingko",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Graph-based memory integration for Claude Code via the Gingko MCP server",
   "author": {
     "name": "Edlon Tech"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.4...gingko-v0.1.5) (2026-05-06)
+
+
+### Bug Fixes
+
+* Fixed releasse flow ([74becce](https://github.com/edlontech/gingko-mem/commit/74becce11b89c029feddf2fda313b0df1aa0be22))
+
 ## [0.1.4](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.3...gingko-v0.1.4) (2026-05-06)
 
 

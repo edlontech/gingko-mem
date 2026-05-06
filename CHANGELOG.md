@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.3...gingko-v0.1.4) (2026-05-06)
+
+
+### Bug Fixes
+
+* Fix windows ci build ([9c13a77](https://github.com/edlontech/gingko-mem/commit/9c13a7782261cd646e39c4d98baa96902a3f87fb))
+
 ## [0.1.3](https://github.com/edlontech/gingko-mem/compare/gingko-v0.1.2...gingko-v0.1.3) (2026-05-06)
 
 

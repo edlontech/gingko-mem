@@ -63,10 +63,18 @@ jobs:
       - name: "Checkout code"
         uses: actions/checkout@v4
 
-      - name: Set up Elixir
+      - name: Set up Elixir (Windows)
+        if: runner.os == 'Windows'
         uses: erlef/setup-beam@v1
         env:
-          ImageOS: ${{ runner.os == 'Windows' && 'win25' || '' }}
+          ImageOS: win25
+        with:
+          elixir-version: "1.19.4"
+          otp-version: "28.3"
+
+      - name: Set up Elixir
+        if: runner.os != 'Windows'
+        uses: erlef/setup-beam@v1
         with:
           elixir-version: "1.19.4"
           otp-version: "28.3"

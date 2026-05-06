@@ -24,6 +24,7 @@ defmodule Gingko.DataCase do
 
   setup _tags do
     clean_summaries_tables()
+    clean_provider_credentials()
     :ok
   end
 
@@ -32,6 +33,14 @@ defmodule Gingko.DataCase do
   """
   def clean_summaries_tables do
     Repo.query!("DELETE FROM principal_memory_sections")
+    :ok
+  end
+
+  @doc """
+  Clears stored provider credentials so tests start from a known state.
+  """
+  def clean_provider_credentials do
+    Repo.query!("DELETE FROM provider_credentials")
     :ok
   end
 

@@ -25,6 +25,7 @@ defmodule GingkoWeb.ConnCase do
   end
 
   setup do
+    Gingko.Repo.query!("DELETE FROM provider_credentials")
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

@@ -53,6 +53,7 @@ defmodule Gingko.Application do
     with {:ok, pid} <- Supervisor.start_link(children, opts) do
       Gingko.Projects.abandon_active_sessions()
       :ok = Gingko.Memory.reopen_registered_projects()
+      :ok = Gingko.Credentials.sync_runtime()
       _ = Gingko.Summaries.DirtyTracker.attach()
       _ = maybe_attach_cost_handler()
       {:ok, pid}
@@ -91,6 +92,8 @@ defmodule Gingko.Application do
 
     Application.put_env(:gingko, Gingko.Summaries.Config, Settings.summaries_env(settings))
     Application.put_env(:gingko, Gingko.Cost.Config, Settings.cost_tracker_env(settings))
+
+    :ok = Gingko.Credentials.sync_runtime()
 
     refresh_runtime_children()
   end

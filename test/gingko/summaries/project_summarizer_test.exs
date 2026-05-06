@@ -97,8 +97,7 @@ defmodule Gingko.Summaries.ProjectSummarizerTest do
       stub(Sycophant, :generate_object, fn _model, messages, _schema ->
         send(test_pid, {:messages, messages})
 
-        {:ok,
-         %{object: %{content: "body", frontmatter: %{topics: [], key_concepts: []}}}}
+        {:ok, %{object: %{content: "body", frontmatter: %{topics: [], key_concepts: []}}}}
       end)
 
       memories = [
@@ -110,6 +109,7 @@ defmodule Gingko.Summaries.ProjectSummarizerTest do
 
       assert_receive {:messages, messages}
       content = List.last(messages).content
+
       [_, durable_block, episodic_block] =
         Regex.run(
           ~r/Durable knowledge[^\n]*\n(.*?)Recent events[^\n]*\n(.*?)Distill/s,
@@ -128,8 +128,7 @@ defmodule Gingko.Summaries.ProjectSummarizerTest do
       stub(Sycophant, :generate_object, fn _model, messages, _schema ->
         send(test_pid, {:messages, messages})
 
-        {:ok,
-         %{object: %{content: "body", frontmatter: %{topics: [], key_concepts: []}}}}
+        {:ok, %{object: %{content: "body", frontmatter: %{topics: [], key_concepts: []}}}}
       end)
 
       _ =

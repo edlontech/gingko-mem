@@ -3,6 +3,8 @@ defmodule GingkoWeb.SetupLive do
 
   use GingkoWeb, :live_view
 
+  alias Gingko.Credentials
+  alias Gingko.Providers.GithubCopilotAuth
   alias Gingko.Settings
   alias Phoenix.Component
 
@@ -48,7 +50,11 @@ defmodule GingkoWeb.SetupLive do
        active_tab: "general",
        pipeline_steps: Settings.pipeline_steps(),
        node_types: Settings.node_types(),
-       vf_param_meta: @vf_param_meta
+       vf_param_meta: @vf_param_meta,
+       copilot_state: :idle,
+       copilot_device: nil,
+       copilot_token_preview: nil,
+       copilot_error: nil
      )}
   end
 
@@ -58,14 +64,16 @@ defmodule GingkoWeb.SetupLive do
     settings = Settings.load(opts)
 
     {:noreply,
-     assign(socket,
+     socket
+     |> assign(
        settings: settings,
        form: settings_form(settings),
        llm_providers: Settings.llm_provider_options(opts),
        embedding_providers: Settings.embedding_provider_options(opts),
        llm_models: Settings.model_options(settings.llm.provider, :llm, opts),
        embedding_models: Settings.model_options(settings.embeddings.provider, :embedding, opts)
-     )}
+     )
+     |> refresh_copilot_status()}
   end
 
   @impl true
@@ -116,6 +124,67 @@ defmodule GingkoWeb.SetupLive do
       {:error, error} ->
         {:noreply, put_flash(socket, :error, "Could not save settings: #{inspect(error)}")}
     end
+  end
+
+  @impl true
+  def handle_event("copilot_login", _params, socket) do
+    case GithubCopilotAuth.start_device_flow() do
+      {:ok, device} ->
+        socket =
+          socket
+          |> assign(copilot_state: :awaiting_user, copilot_device: device, copilot_error: nil)
+          |> start_async(:copilot_poll, fn ->
+            GithubCopilotAuth.poll_for_token(device.device_code, device.interval)
+          end)
+
+        {:noreply, socket}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(copilot_state: :error, copilot_error: format_copilot_error(reason))
+         |> put_flash(:error, "Could not start Copilot device flow")}
+    end
+  end
+
+  @impl true
+  def handle_event("copilot_logout", _params, socket) do
+    :ok = Credentials.delete_all(:github_copilot)
+    {:noreply, refresh_copilot_status(assign(socket, copilot_device: nil, copilot_error: nil))}
+  end
+
+  @impl true
+  def handle_async(:copilot_poll, {:ok, {:ok, token}}, socket) do
+    case GithubCopilotAuth.verify_token(token) do
+      {:ok, _meta} ->
+        {:ok, _} = Credentials.put(:github_copilot, :github_token, token)
+
+        {:noreply,
+         socket
+         |> assign(copilot_device: nil, copilot_error: nil)
+         |> refresh_copilot_status()
+         |> put_flash(:info, "GitHub Copilot authenticated")}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> assign(copilot_state: :error, copilot_error: format_copilot_error(reason))
+         |> put_flash(:error, "Copilot token verification failed")}
+    end
+  end
+
+  def handle_async(:copilot_poll, {:ok, {:error, reason}}, socket) do
+    {:noreply,
+     socket
+     |> assign(copilot_state: :error, copilot_error: format_copilot_error(reason))
+     |> put_flash(:error, "Copilot device flow failed")}
+  end
+
+  def handle_async(:copilot_poll, {:exit, reason}, socket) do
+    {:noreply,
+     socket
+     |> assign(copilot_state: :error, copilot_error: format_copilot_error(reason))
+     |> put_flash(:error, "Copilot device flow crashed")}
   end
 
   @impl true
@@ -206,6 +275,13 @@ defmodule GingkoWeb.SetupLive do
                 embedding_providers={@embedding_providers}
                 llm_models={@llm_models}
                 embedding_models={@embedding_models}
+              />
+              <.copilot_panel
+                :if={@settings.llm.provider == "github_copilot"}
+                state={@copilot_state}
+                device={@copilot_device}
+                token_preview={@copilot_token_preview}
+                error={@copilot_error}
               />
             </div>
 
@@ -344,6 +420,90 @@ defmodule GingkoWeb.SetupLive do
 
   defp model_placeholder([]), do: "Pick a provider first"
   defp model_placeholder(_), do: "Select or search a model"
+
+  attr :state, :atom, required: true
+  attr :device, :any, default: nil
+  attr :token_preview, :any, default: nil
+  attr :error, :any, default: nil
+
+  defp copilot_panel(assigns) do
+    ~H"""
+    <section class="mt-6 space-y-3 rounded-xl border border-base-300 bg-base-200 p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">
+          GitHub Copilot authentication
+        </h3>
+        <span class={["badge", copilot_badge_class(@state)]}>
+          {copilot_status_label(@state)}
+        </span>
+      </div>
+
+      <p class="text-sm text-base-content/70">
+        Copilot uses GitHub's OAuth device flow. Click the button, open the URL,
+        enter the code, and Gingko will store the resulting token.
+      </p>
+
+      <div :if={@state == :authenticated} class="flex flex-wrap items-center gap-3">
+        <span class="font-mono text-xs text-base-content/70">
+          Token: {@token_preview}
+        </span>
+        <button type="button" phx-click="copilot_login" class="btn btn-sm">
+          Re-authenticate
+        </button>
+        <button type="button" phx-click="copilot_logout" class="btn btn-sm btn-ghost">
+          Sign out
+        </button>
+      </div>
+
+      <div :if={@state == :idle} class="flex items-center gap-3">
+        <button type="button" phx-click="copilot_login" class="btn btn-sm btn-primary">
+          Authenticate with GitHub
+        </button>
+      </div>
+
+      <div
+        :if={@state == :awaiting_user and not is_nil(@device)}
+        class="space-y-2 rounded-lg border border-base-300 bg-base-100 p-3"
+      >
+        <p class="text-sm">
+          Open
+          <a
+            href={@device.verification_uri}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="link link-primary font-mono"
+          >
+            {@device.verification_uri}
+          </a>
+          and enter:
+        </p>
+        <p class="text-2xl font-mono tracking-widest">{@device.user_code}</p>
+        <p class="text-xs text-base-content/60">
+          Waiting for approval... this page will update automatically.
+        </p>
+      </div>
+
+      <div :if={@state == :error} class="space-y-2">
+        <p class="text-sm text-error">
+          {@error || "Authentication failed."}
+        </p>
+        <button type="button" phx-click="copilot_login" class="btn btn-sm">
+          Try again
+        </button>
+      </div>
+    </section>
+    """
+  end
+
+  defp copilot_badge_class(:authenticated), do: "badge-success"
+  defp copilot_badge_class(:awaiting_user), do: "badge-info"
+  defp copilot_badge_class(:error), do: "badge-error"
+  defp copilot_badge_class(_), do: "badge-ghost"
+
+  defp copilot_status_label(:authenticated), do: "Authenticated"
+  defp copilot_status_label(:awaiting_user), do: "Awaiting approval"
+  defp copilot_status_label(:error), do: "Error"
+  defp copilot_status_label(_), do: "Not authenticated"
 
   attr :form, :any, required: true
 
@@ -903,4 +1063,33 @@ defmodule GingkoWeb.SetupLive do
   defp sync_runtime_settings(settings) do
     Gingko.Application.sync_runtime_settings(settings, settings_opts())
   end
+
+  defp refresh_copilot_status(socket) do
+    case Credentials.get(:github_copilot, :github_token) do
+      nil ->
+        assign(socket,
+          copilot_state: :idle,
+          copilot_token_preview: nil
+        )
+
+      token when is_binary(token) ->
+        assign(socket,
+          copilot_state: :authenticated,
+          copilot_token_preview: mask_token(token)
+        )
+    end
+  end
+
+  defp mask_token(token) when is_binary(token) and byte_size(token) > 8 do
+    prefix = binary_part(token, 0, 4)
+    suffix = binary_part(token, byte_size(token) - 4, 4)
+    "#{prefix}…#{suffix}"
+  end
+
+  defp mask_token(_), do: "***"
+
+  defp format_copilot_error({:github, err}), do: "GitHub error: #{err}"
+  defp format_copilot_error({:unexpected_status, status, _body}), do: "HTTP #{status}"
+  defp format_copilot_error(:timeout), do: "Timed out waiting for approval"
+  defp format_copilot_error(reason), do: inspect(reason)
 end

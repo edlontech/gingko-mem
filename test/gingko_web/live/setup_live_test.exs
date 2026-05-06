@@ -1,6 +1,10 @@
 defmodule GingkoWeb.SetupLiveTest do
   use GingkoWeb.ConnCase, async: false
+  use Mimic
 
+  alias Gingko.Credentials
+  alias Gingko.Credentials.Runtime
+  alias Gingko.Providers.GithubCopilotAuth
   alias Gingko.Settings
 
   setup do
@@ -634,6 +638,138 @@ defmodule GingkoWeb.SetupLiveTest do
       [_, model_input] = Regex.run(~r/(<input[^>]*id="settings_llm_0_model"[^>]*>)/, new_html)
       refute model_input =~ ~s(value="gpt-4o-mini")
       refute model_input =~ ~s(value="claude-sonnet-4")
+    end
+  end
+
+  describe "[copilot] device-flow auth" do
+    setup :set_mimic_global
+
+    setup do
+      Mimic.copy(Runtime)
+      Mimic.copy(GithubCopilotAuth)
+      stub(Runtime, :put_provider, fn _, _ -> :ok end)
+      stub(Runtime, :delete_provider, fn _ -> :ok end)
+      :ok
+    end
+
+    defp seed_copilot_provider(tmp_dir) do
+      Application.put_env(:gingko, :settings_opts,
+        home: tmp_dir,
+        llm_resolver: fn
+          "github_copilot:gpt-4o" -> {:ok, %{provider: :github_copilot}}
+          _ -> {:error, :unknown_model}
+        end,
+        embedding_resolver: fn
+          "openai:text-embedding-3-small" -> {:ok, %{provider: :openai}}
+          _ -> {:error, :unknown_model}
+        end,
+        providers_source: fn -> [:github_copilot, :openai] end,
+        models_source: fn
+          :github_copilot -> [%{id: "gpt-4o", modalities: %{output: [:text]}}]
+          :openai -> [%{id: "text-embedding-3-small", modalities: %{output: [:embedding]}}]
+          _ -> []
+        end
+      )
+
+      File.mkdir_p!(tmp_dir)
+
+      File.write!(Path.join(tmp_dir, "config.toml"), """
+      [paths]
+      memory = "memory"
+
+      [llm]
+      provider = "github_copilot"
+      model = "gpt-4o"
+
+      [embeddings]
+      provider = "openai"
+      model = "text-embedding-3-small"
+
+      [server]
+      host = "127.0.0.1"
+      port = 4000
+      """)
+    end
+
+    @tag :tmp_dir
+    test "shows the auth panel when github_copilot is selected", %{conn: conn, tmp_dir: tmp_dir} do
+      seed_copilot_provider(tmp_dir)
+
+      {:ok, _view, html} = live conn, ~p"/setup"
+
+      assert html =~ "GitHub Copilot authentication"
+      assert html =~ "Authenticate with GitHub"
+    end
+
+    @tag :tmp_dir
+    test "starts the device flow and renders the user code", %{conn: conn, tmp_dir: tmp_dir} do
+      seed_copilot_provider(tmp_dir)
+
+      expect(GithubCopilotAuth, :start_device_flow, fn ->
+        {:ok,
+         %{
+           device_code: "dc",
+           user_code: "WXYZ-1234",
+           verification_uri: "https://github.com/login/device",
+           interval: 5,
+           expires_in: 900
+         }}
+      end)
+
+      stub(GithubCopilotAuth, :poll_for_token, fn "dc", 5 ->
+        Process.sleep(:infinity)
+      end)
+
+      {:ok, view, _html} = live conn, ~p"/setup"
+
+      html = view |> element("button", "Authenticate with GitHub") |> render_click()
+
+      assert html =~ "WXYZ-1234"
+      assert html =~ "https://github.com/login/device"
+      assert html =~ "Awaiting approval"
+    end
+
+    @tag :tmp_dir
+    test "stores token on successful poll and shows masked token", %{conn: conn, tmp_dir: tmp_dir} do
+      seed_copilot_provider(tmp_dir)
+
+      expect(GithubCopilotAuth, :start_device_flow, fn ->
+        {:ok,
+         %{
+           device_code: "dc",
+           user_code: "WXYZ-1234",
+           verification_uri: "https://github.com/login/device",
+           interval: 5,
+           expires_in: 900
+         }}
+      end)
+
+      expect(GithubCopilotAuth, :poll_for_token, fn "dc", 5 -> {:ok, "gho_supersecret"} end)
+      expect(GithubCopilotAuth, :verify_token, fn "gho_supersecret" -> {:ok, %{}} end)
+
+      {:ok, view, _html} = live conn, ~p"/setup"
+      view |> element("button", "Authenticate with GitHub") |> render_click()
+
+      html = render_async(view)
+
+      assert html =~ "Authenticated"
+      assert html =~ "gho_…cret"
+      assert Credentials.get(:github_copilot, :github_token) == "gho_supersecret"
+    end
+
+    @tag :tmp_dir
+    test "logout clears stored credentials", %{conn: conn, tmp_dir: tmp_dir} do
+      seed_copilot_provider(tmp_dir)
+
+      {:ok, _} = Credentials.put(:github_copilot, :github_token, "gho_alreadythere")
+
+      {:ok, view, html} = live conn, ~p"/setup"
+      assert html =~ "Authenticated"
+
+      html = view |> element("button", "Sign out") |> render_click()
+
+      assert html =~ "Authenticate with GitHub"
+      assert Credentials.get(:github_copilot, :github_token) == nil
     end
   end
 end
